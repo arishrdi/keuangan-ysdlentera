@@ -157,6 +157,10 @@ new #[Title('Kenaikan Kelas')] class extends Component {
         $students = $this->students->whereIn('id', $validated['selectedStudentIds']);
         $sourceClassroom = Classroom::query()->findOrFail($validated['sourceClassroomId']);
 
+        if ($validated['mode'] === 'graduate') {
+            $students->each->ensureSavingsAreSettled('selectedStudentIds');
+        }
+
         DB::transaction(function () use ($students, $validated, $sourceClassroom): void {
             if ($validated['mode'] === 'promote') {
                 $target = Classroom::query()->findOrFail($validated['targetClassroomId']);

@@ -105,7 +105,20 @@
                 $monthExpense = (int) (clone $monthEntries)->where('type', \App\Enums\CashTransactionType::Expense)->sum('amount');
             @endphp
 
+            @php
+                $savingsBalance = (int) \App\Models\Student::query()
+                    ->when($activeLevel, fn ($query) => $query->whereBelongsTo($activeLevel))
+                    ->withSavingsBalance()
+                    ->get(['students.id'])
+                    ->sum('savings_balance');
+            @endphp
+
             <div class="stats stats-vertical mt-6 w-full border border-base-300 shadow-sm md:stats-horizontal">
+                <div class="stat">
+                    <div class="stat-title">Total tabungan siswa</div>
+                    <div class="stat-value text-2xl">{{ \Illuminate\Support\Number::rupiah($savingsBalance) }}</div>
+                    <div class="stat-desc">Dana titipan, di luar kas</div>
+                </div>
                 <div class="stat">
                     <div class="stat-title">Saldo kas</div>
                     <div class="stat-value text-2xl text-primary">{{ \Illuminate\Support\Number::rupiah($cashBalance) }}</div>
@@ -159,6 +172,7 @@
         @php
             $children = $user->students()
                 ->with(['level', 'currentEnrollment.classroom', 'bills' => fn ($query) => $query->outstanding()->orderByRaw('due_date is null')->orderBy('due_date')])
+                ->withSavingsBalance()
                 ->orderBy('name')
                 ->get();
         @endphp
@@ -187,6 +201,10 @@
                                 </div>
                             @endif
                         </div>
+                        <div class="flex items-center justify-between rounded-box border border-base-300 p-3">
+                            <span class="text-xs text-base-content/60">Saldo tabungan</span>
+                            <a href="{{ route('guardian.savings', ['anak' => $child->id]) }}" class="link font-semibold" wire:navigate>{{ \Illuminate\Support\Number::rupiah((int) $child->savings_balance) }}</a>
+                        </div>
                         @if ($outstanding > 0)
                             <div class="card-actions justify-end">
                                 <a href="{{ route('guardian.bills', ['anak' => $child->id]) }}" class="btn btn-primary btn-sm" wire:navigate>Lihat & bayar</a>
@@ -201,8 +219,6 @@
             @endforelse
         </div>
 
-        <div class="mt-6 rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">
-            Saldo tabungan anak akan tampil di sini setelah modul tabungan selesai dibangun.
-        </div>
+
     @endif
 </x-layouts::app>

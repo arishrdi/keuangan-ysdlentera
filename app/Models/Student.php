@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CashDirection;
 use App\Enums\Gender;
 use App\Enums\StudentStatus;
 use Database\Factories\StudentFactory;
@@ -14,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Number;
+use Illuminate\Validation\ValidationException;
 
 /**
  * @property int $id
@@ -29,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $status_changed_on
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read int|null $savings_balance
  */
 #[Fillable(['level_id', 'nis', 'nisn', 'name', 'gender', 'birth_place', 'birth_date', 'address', 'status', 'status_changed_on'])]
 class Student extends Model
@@ -100,6 +104,67 @@ class Student extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return HasMany<SavingsTransaction, $this>
+     */
+    public function savingsTransactions(): HasMany
+    {
+        return $this->hasMany(SavingsTransaction::class);
+    }
+
+    /**
+     * The current savings balance of the student.
+     */
+    public function savingsBalance(): int
+    {
+        return (int) $this->savingsTransactions()
+            ->selectRaw('coalesce(sum(case when direction = ? then amount else -amount end), 0) as balance', [CashDirection::In->value])
+            ->value('balance');
+    }
+
+    /**
+     * Add the current savings balance as `savings_balance`.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeWithSavingsBalance(Builder $query): void
+    {
+        $query->addSelect([
+            'savings_balance' => SavingsTransaction::query()
+                ->selectRaw('coalesce(sum(case when direction = ? then amount else -amount end), 0)', [CashDirection::In->value])
+                ->whereColumn('savings_transactions.student_id', 'students.id'),
+        ]);
+    }
+
+    /**
+     * Only students whose savings balance is above zero.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeWithPositiveSavings(Builder $query): void
+    {
+        $query->whereRaw(
+            '(select coalesce(sum(case when direction = ? then amount else -amount end), 0) from savings_transactions where savings_transactions.student_id = students.id) > 0',
+            [CashDirection::In->value],
+        );
+    }
+
+    /**
+     * Refuse to let a student leave while savings are still held for them.
+     *
+     * @throws ValidationException
+     */
+    public function ensureSavingsAreSettled(string $errorKey = 'student_status'): void
+    {
+        $balance = $this->savingsBalance();
+
+        if ($balance > 0) {
+            throw ValidationException::withMessages([
+                $errorKey => 'Saldo tabungan '.$this->name.' masih '.Number::rupiah($balance).'. Catat penarikan seluruh saldo terlebih dahulu.',
+            ]);
+        }
     }
 
     /**

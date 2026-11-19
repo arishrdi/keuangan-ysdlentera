@@ -37,6 +37,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('pengeluaran', 'pages::finance.expenses')->name('finance.expenses');
             Route::livewire('kas', 'pages::finance.cash')->name('finance.cash');
             Route::get('kas/{cashTransaction}/bukti', CashTransactionProofController::class)->name('finance.proof');
+            Route::livewire('tabungan', 'pages::savings.index')->name('savings.index');
+            Route::livewire('tabungan/siswa/{student}', 'pages::savings.student')->name('savings.student');
             Route::livewire('anggaran', 'pages::budgets.index')->name('budgets.index');
             Route::livewire('anggaran/{budgetProposal}', 'pages::budgets.show')->whereNumber('budgetProposal')->name('budgets.show');
             Route::get('anggaran/{budgetProposal}/lampiran/{attachment}', BudgetAttachmentController::class)->name('budgets.attachment');
@@ -52,6 +54,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('tagihan', 'pages::guardian.bills')->name('guardian.bills');
             Route::livewire('cicilan', 'pages::guardian.installments')->name('guardian.installments');
             Route::livewire('riwayat', 'pages::guardian.payments')->name('guardian.payments');
+            Route::livewire('tabungan', 'pages::guardian.savings')->name('guardian.savings');
         });
 
         Route::middleware('role:admin')->prefix('admin')->group(function () {

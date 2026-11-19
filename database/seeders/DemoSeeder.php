@@ -7,6 +7,7 @@ use App\Actions\Budgets\DecideBudgetProposal;
 use App\Actions\Budgets\SaveBudgetProposal;
 use App\Actions\Budgets\SubmitBudgetProposal;
 use App\Actions\Cash\CashLedger;
+use App\Actions\Savings\SavingsLedger;
 use App\Enums\BudgetAction;
 use App\Enums\CashAccountType;
 use App\Enums\PaymentChannelType;
@@ -82,6 +83,20 @@ class DemoSeeder extends Seeder
 
         $this->seedBilling($academicYear);
         $this->seedBudgets();
+        $this->seedSavings();
+    }
+
+    /**
+     * Give some students an opening savings balance and a few deposits.
+     */
+    private function seedSavings(): void
+    {
+        $ledger = app(SavingsLedger::class);
+
+        Student::query()->active()->orderBy('id')->limit(20)->get()->each(function (Student $student, int $index) use ($ledger): void {
+            $ledger->recordOpeningBalance($student, ($index + 1) * 25_000, now()->subMonths(2));
+            $ledger->deposit($student, 10_000, now()->subDays(7), 'Setoran mingguan');
+        });
     }
 
     /**

@@ -3,7 +3,7 @@
     $items = [
         ['label' => 'Beranda', 'route' => 'dashboard', 'icon' => 'home', 'active' => 'dashboard'],
         ['label' => 'Tagihan', 'route' => 'guardian.bills', 'icon' => 'document-text', 'active' => 'guardian.bills'],
-        ['label' => 'Cicilan', 'route' => 'guardian.installments', 'icon' => 'chart-pie', 'active' => 'guardian.installments'],
+        ['label' => 'Tabungan', 'route' => 'guardian.savings', 'icon' => 'wallet', 'active' => 'guardian.savings'],
         ['label' => 'Riwayat', 'route' => 'guardian.payments', 'icon' => 'clock', 'active' => 'guardian.payments'],
         ['label' => 'Profil', 'route' => 'profile.edit', 'icon' => 'user-circle', 'active' => 'profile.edit'],
     ];

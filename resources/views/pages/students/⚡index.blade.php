@@ -209,6 +209,10 @@ new #[Title('Data Siswa')] class extends Component {
         $original = $this->editingId ? Student::query()->findOrFail($this->editingId) : null;
         $statusChanged = $original === null || $original->status !== $status;
 
+        if ($original !== null && $statusChanged && $status !== StudentStatus::Active) {
+            $original->ensureSavingsAreSettled('student_status');
+        }
+
         $student = DB::transaction(function () use ($validated, $status, $statusChanged, $original): Student {
             $student = Student::query()->updateOrCreate(['id' => $this->editingId], [
                 'level_id' => $validated['level_id'],
