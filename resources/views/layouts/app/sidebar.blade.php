@@ -20,11 +20,18 @@
                             <x-level-switcher />
                         @endif
 
+                        <livewire:notification-bell />
+
                         <x-desktop-user-menu :compact="true" class="lg:hidden" />
                     </div>
                 </div>
 
                 {{ $slot }}
+
+                @if (auth()->user()->hasRole(\App\Enums\Role::Guardian))
+                    <div class="h-16 lg:hidden"></div>
+                    <x-guardian-dock />
+                @endif
             </div>
 
             <div class="drawer-side z-40">

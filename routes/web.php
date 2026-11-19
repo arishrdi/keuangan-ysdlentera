@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\ActiveLevelController;
+use App\Http\Controllers\PaymentChannelQrisController;
+use App\Http\Controllers\PaymentProofController;
+use App\Http\Controllers\PaymentReceiptController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');
@@ -11,6 +14,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('jenjang-aktif', ActiveLevelController::class)->name('levels.switch');
     });
 
+    Route::get('kuitansi/{payment}', PaymentReceiptController::class)->name('payments.receipt');
+    Route::get('pembayaran/{payment}/bukti', PaymentProofController::class)->name('payments.proof');
+    Route::get('rekening/{paymentChannel}/qris', PaymentChannelQrisController::class)->name('payment-channels.qris');
+
     Route::middleware('level.selected')->group(function () {
         Route::view('dashboard', 'dashboard')->name('dashboard');
 
@@ -20,12 +27,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('riwayat-aktivitas', 'pages::activity-logs.index')->name('activity-logs.index');
         });
 
+        Route::middleware('role:bendahara,kepala_sekolah,yayasan')->group(function () {
+            Route::livewire('tagihan', 'pages::billing.index')->name('billing.index');
+            Route::livewire('tagihan/siswa/{student}', 'pages::billing.student')->name('billing.student');
+            Route::livewire('pembayaran', 'pages::payments.index')->name('payments.index');
+        });
+
+        Route::middleware('role:bendahara')->group(function () {
+            Route::livewire('tagihan/terbitkan', 'pages::billing.issue')->name('billing.issue');
+        });
+
+        Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
+            Route::livewire('tagihan', 'pages::guardian.bills')->name('guardian.bills');
+            Route::livewire('cicilan', 'pages::guardian.installments')->name('guardian.installments');
+            Route::livewire('riwayat', 'pages::guardian.payments')->name('guardian.payments');
+        });
+
         Route::middleware('role:admin')->prefix('admin')->group(function () {
             Route::livewire('pengguna', 'pages::admin.users')->name('admin.users');
             Route::livewire('tahun-ajaran', 'pages::admin.academic-years')->name('admin.academic-years');
             Route::livewire('kelas', 'pages::admin.classrooms')->name('admin.classrooms');
             Route::livewire('wali-murid', 'pages::admin.guardians')->name('admin.guardians');
             Route::livewire('kenaikan-kelas', 'pages::admin.promotions')->name('admin.promotions');
+            Route::livewire('kategori-tarif', 'pages::admin.fee-rates')->name('admin.fee-rates');
+            Route::livewire('seragam', 'pages::admin.uniform-items')->name('admin.uniform-items');
+            Route::livewire('rekening', 'pages::admin.payment-channels')->name('admin.payment-channels');
         });
     });
 });

@@ -57,13 +57,50 @@
         </div>
 
         @unless ($user->hasRole(Role::Admin))
+            @php
+                $billQuery = \App\Models\Bill::query()
+                    ->where('status', '!=', \App\Enums\BillStatus::Cancelled)
+                    ->when($academicYear, fn ($query) => $query->whereBelongsTo($academicYear))
+                    ->when($activeLevel, fn ($query) => $query->whereBelongsTo($activeLevel));
+                $billed = (int) (clone $billQuery)->sum(\Illuminate\Support\Facades\DB::raw('amount - discount_amount'));
+                $received = (int) (clone $billQuery)->sum('paid_amount');
+                $pendingPayments = \App\Models\Payment::query()
+                    ->where('status', \App\Enums\PaymentStatus::Pending)
+                    ->when($activeLevel, fn ($query) => $query->whereBelongsTo($activeLevel))
+                    ->count();
+            @endphp
+
+            <div class="stats stats-vertical mt-6 w-full border border-base-300 shadow-sm md:stats-horizontal">
+                <div class="stat">
+                    <div class="stat-title">Total tagihan siswa</div>
+                    <div class="stat-value text-2xl">{{ \Illuminate\Support\Number::rupiah($billed) }}</div>
+                    <div class="stat-desc">Tahun ajaran {{ $academicYear?->name ?? '-' }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">Pembayaran diterima</div>
+                    <div class="stat-value text-2xl text-success">{{ \Illuminate\Support\Number::rupiah($received) }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">Belum dibayar</div>
+                    <div class="stat-value text-2xl text-error">{{ \Illuminate\Support\Number::rupiah($billed - $received) }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">Menunggu verifikasi</div>
+                    <div class="stat-value text-2xl">{{ $pendingPayments }}</div>
+                    <div class="stat-desc"><a href="{{ route('payments.index', ['status' => 'menunggu']) }}" class="link" wire:navigate>Lihat pembayaran</a></div>
+                </div>
+            </div>
+
             <div class="mt-6 rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">
-                Ringkasan keuangan (pemasukan, pengeluaran, kas, pembayaran, dan anggaran) akan tampil di sini setelah modul keuangan selesai dibangun.
+                Ringkasan kas, pemasukan, pengeluaran, dan anggaran akan tampil di sini setelah modul berikutnya selesai dibangun.
             </div>
         @endunless
     @else
         @php
-            $children = $user->students()->with(['level', 'currentEnrollment.classroom'])->orderBy('name')->get();
+            $children = $user->students()
+                ->with(['level', 'currentEnrollment.classroom', 'bills' => fn ($query) => $query->outstanding()->orderByRaw('due_date is null')->orderBy('due_date')])
+                ->orderBy('name')
+                ->get();
         @endphp
 
         <h2 class="mb-3 font-semibold">Anak terhubung</h2>
@@ -77,6 +114,24 @@
                             {{ $child->level->name }} · Kelas {{ $child->currentEnrollment?->classroom->name ?? '-' }}
                         </p>
                         <div><span class="badge {{ $child->status->badgeClass() }}">{{ $child->status->label() }}</span></div>
+                        @php
+                            $outstanding = $child->bills->sum(fn ($bill) => $bill->remainingAmount());
+                            $nextBill = $child->bills->first();
+                        @endphp
+                        <div class="mt-2 rounded-box bg-base-200 p-3">
+                            <div class="text-xs text-base-content/60">Sisa tagihan</div>
+                            <div @class(['text-xl font-semibold', 'text-error' => $outstanding > 0, 'text-success' => $outstanding === 0])>{{ \Illuminate\Support\Number::rupiah($outstanding) }}</div>
+                            @if ($nextBill)
+                                <div @class(['text-xs', 'text-error' => $nextBill->isOverdue(), 'text-base-content/70' => ! $nextBill->isOverdue()])>
+                                    Terdekat: {{ $nextBill->description }}{{ $nextBill->due_date ? ' · jatuh tempo '.$nextBill->due_date->translatedFormat('j M Y') : '' }}
+                                </div>
+                            @endif
+                        </div>
+                        @if ($outstanding > 0)
+                            <div class="card-actions justify-end">
+                                <a href="{{ route('guardian.bills', ['anak' => $child->id]) }}" class="btn btn-primary btn-sm" wire:navigate>Lihat & bayar</a>
+                            </div>
+                        @endif
                     </div>
                 </div>
             @empty
@@ -87,7 +142,7 @@
         </div>
 
         <div class="mt-6 rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">
-            Tagihan, pembayaran, dan tabungan anak akan tampil di sini setelah modul pembayaran selesai dibangun.
+            Saldo tabungan anak akan tampil di sini setelah modul tabungan selesai dibangun.
         </div>
     @endif
 </x-layouts::app>

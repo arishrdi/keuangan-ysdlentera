@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Enums\Role;
+use App\Models\Student;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Number;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -28,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
         $this->configureAuthorization();
+        $this->configureFormatting();
     }
 
     /**
@@ -40,6 +43,23 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('view-school-data', fn (User $user): bool => $user->hasRole(Role::Admin, Role::Foundation));
 
         Gate::define('view-activity-log', fn (User $user): bool => $user->hasRole(Role::Admin, Role::Foundation));
+
+        Gate::define('manage-payment-settings', fn (User $user): bool => $user->hasRole(Role::Admin));
+
+        Gate::define('manage-billing', fn (User $user): bool => $user->hasRole(Role::Treasurer));
+
+        Gate::define('view-finance', fn (User $user): bool => $user->hasRole(Role::Treasurer, Role::Principal, Role::Foundation));
+
+        Gate::define('view-student-billing', fn (User $user, Student $student): bool => $user->hasRole(Role::Treasurer, Role::Principal, Role::Foundation)
+            || ($user->hasRole(Role::Guardian) && $student->isGuardedBy($user)));
+    }
+
+    /**
+     * Register formatting helpers for money.
+     */
+    protected function configureFormatting(): void
+    {
+        Number::macro('rupiah', fn (int|float|null $amount): string => ($amount < 0 ? '-' : '').'Rp'.number_format(abs((float) $amount), 0, ',', '.'));
     }
 
     /**

@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Notifications;
+
+use App\Models\Payment;
+use Illuminate\Notifications\Notification;
+
+class PaymentSubmitted extends Notification
+{
+    public function __construct(public Payment $payment) {}
+
+    /**
+     * @return array<int, string>
+     */
+    public function via(object $notifiable): array
+    {
+        return ['database'];
+    }
+
+    /**
+     * @return array{title: string, message: string, url: string}
+     */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'title' => 'Bukti pembayaran baru',
+            'message' => $this->payment->student->name.' · Rp'.number_format($this->payment->amount, 0, ',', '.').' menunggu verifikasi.',
+            'url' => route('payments.index', ['status' => 'menunggu']),
+        ];
+    }
+}

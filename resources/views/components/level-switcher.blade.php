@@ -12,7 +12,7 @@
 >
     <summary class="btn btn-sm btn-outline btn-primary" data-test="level-switcher">
         <x-icon name="building-office" class="size-4" />
-        <span>Jenjang: <strong>{{ $activeLevel?->name ?? 'Semua' }}</strong></span>
+        <span class="whitespace-nowrap"><span class="max-sm:hidden">Jenjang: </span><strong>{{ $activeLevel?->name ?? 'Semua' }}</strong></span>
         <x-icon name="chevron-down" class="size-4 opacity-60" />
     </summary>
 

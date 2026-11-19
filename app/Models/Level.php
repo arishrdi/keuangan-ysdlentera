@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Session;
@@ -67,6 +68,24 @@ class Level extends Model
     public static function activate(?self $level): void
     {
         Session::put(self::SESSION_KEY, $level->id ?? self::ALL);
+    }
+
+    /**
+     * Payment categories with their activation flag for this level.
+     *
+     * @return BelongsToMany<PaymentCategory, $this>
+     */
+    public function paymentCategories(): BelongsToMany
+    {
+        return $this->belongsToMany(PaymentCategory::class)->withPivot('is_active')->withTimestamps();
+    }
+
+    /**
+     * @return HasMany<PaymentChannel, $this>
+     */
+    public function paymentChannels(): HasMany
+    {
+        return $this->hasMany(PaymentChannel::class);
     }
 
     /**

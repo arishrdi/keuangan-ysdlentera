@@ -87,6 +87,41 @@ class Student extends Model
     }
 
     /**
+     * @return HasMany<Bill, $this>
+     */
+    public function bills(): HasMany
+    {
+        return $this->hasMany(Bill::class);
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * The grade of the student's classroom in the given academic year, if placed.
+     */
+    public function gradeIn(AcademicYear $academicYear): ?int
+    {
+        return $this->enrollments()
+            ->where('enrollments.academic_year_id', $academicYear->id)
+            ->join('classrooms', 'classrooms.id', '=', 'enrollments.classroom_id')
+            ->value('classrooms.grade');
+    }
+
+    /**
+     * Whether the user is a guardian officially linked to this student.
+     */
+    public function isGuardedBy(User $user): bool
+    {
+        return $this->guardians()->whereKey($user->id)->exists();
+    }
+
+    /**
      * @param  Builder<self>  $query
      */
     public function scopeActive(Builder $query): void
