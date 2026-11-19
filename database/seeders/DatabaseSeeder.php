@@ -18,7 +18,7 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call([LevelSeeder::class, PaymentCategorySeeder::class]);
+        $this->call([LevelSeeder::class, PaymentCategorySeeder::class, TransactionCategorySeeder::class]);
 
         if (! AcademicYear::query()->exists()) {
             $startYear = now()->month >= 7 ? now()->year : now()->year - 1;

@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
  *
  * @property int $id
  * @property int $level_id
+ * @property int|null $cash_account_id
  * @property PaymentChannelType $type
  * @property string $name
  * @property string|null $bank_name
@@ -26,7 +27,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['level_id', 'type', 'name', 'bank_name', 'account_number', 'account_holder', 'qris_image_path', 'is_active'])]
+#[Fillable(['level_id', 'cash_account_id', 'type', 'name', 'bank_name', 'account_number', 'account_holder', 'qris_image_path', 'is_active'])]
 class PaymentChannel extends Model
 {
     /** @use HasFactory<PaymentChannelFactory> */
@@ -49,6 +50,16 @@ class PaymentChannel extends Model
     public function level(): BelongsTo
     {
         return $this->belongsTo(Level::class);
+    }
+
+    /**
+     * The cash account that receives money sent to this channel.
+     *
+     * @return BelongsTo<CashAccount, $this>
+     */
+    public function cashAccount(): BelongsTo
+    {
+        return $this->belongsTo(CashAccount::class);
     }
 
     /**

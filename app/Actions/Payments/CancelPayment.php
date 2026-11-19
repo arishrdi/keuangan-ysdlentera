@@ -2,6 +2,7 @@
 
 namespace App\Actions\Payments;
 
+use App\Actions\Cash\CashLedger;
 use App\Enums\PaymentStatus;
 use App\Models\ActivityLog;
 use App\Models\Payment;
@@ -15,6 +16,8 @@ use Illuminate\Validation\ValidationException;
  */
 class CancelPayment
 {
+    public function __construct(private CashLedger $cashLedger) {}
+
     public function handle(Payment $payment, User $actor, string $reason): Payment
     {
         if ($payment->status !== PaymentStatus::Verified) {
@@ -30,6 +33,10 @@ class CancelPayment
             ]);
 
             $payment->bills->each->refreshPaymentStatus();
+
+            if ($payment->cashTransaction !== null) {
+                $this->cashLedger->cancel($payment->cashTransaction, $actor, 'Pembayaran '.$payment->receipt_number.' dibatalkan: '.$reason, fromPayment: true);
+            }
 
             ActivityLog::record('payment.cancelled', 'Membatalkan pembayaran '.$payment->receipt_number, $payment, ['reason' => $reason]);
 

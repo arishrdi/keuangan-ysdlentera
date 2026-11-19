@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\PaymentChannelType;
+use App\Models\CashAccount;
 use App\Models\Level;
 use App\Models\PaymentChannel;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,6 +22,7 @@ class PaymentChannelFactory extends Factory
     {
         return [
             'level_id' => Level::factory(),
+            'cash_account_id' => fn (array $attributes) => CashAccount::factory()->bank()->create(['level_id' => $attributes['level_id']])->id,
             'type' => PaymentChannelType::BankAccount,
             'name' => 'Rekening BSI',
             'bank_name' => 'BSI',

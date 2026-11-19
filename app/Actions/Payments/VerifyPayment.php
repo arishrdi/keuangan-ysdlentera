@@ -2,6 +2,7 @@
 
 namespace App\Actions\Payments;
 
+use App\Actions\Cash\CashLedger;
 use App\Enums\PaymentStatus;
 use App\Enums\Role;
 use App\Models\ActivityLog;
@@ -18,6 +19,8 @@ use Illuminate\Validation\ValidationException;
  */
 class VerifyPayment
 {
+    public function __construct(private CashLedger $cashLedger) {}
+
     public function handle(Payment $payment, User $verifier): Payment
     {
         $payment = DB::transaction(function () use ($payment, $verifier): Payment {
@@ -47,6 +50,8 @@ class VerifyPayment
             ]);
 
             $bills->each->refreshPaymentStatus();
+
+            $this->cashLedger->recordStudentPayment($payment);
 
             ActivityLog::record('payment.verified', 'Memverifikasi pembayaran '.$payment->receipt_number, $payment, ['amount' => $payment->amount]);
 

@@ -3,15 +3,19 @@
 namespace Database\Seeders;
 
 use App\Actions\Billing\IssueBills;
+use App\Actions\Cash\CashLedger;
+use App\Enums\CashAccountType;
 use App\Enums\PaymentChannelType;
 use App\Enums\Role;
 use App\Models\AcademicYear;
+use App\Models\CashAccount;
 use App\Models\Classroom;
 use App\Models\FeeRate;
 use App\Models\Level;
 use App\Models\PaymentCategory;
 use App\Models\PaymentChannel;
 use App\Models\Student;
+use App\Models\TransactionCategory;
 use App\Models\UniformItem;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -101,8 +105,24 @@ class DemoSeeder extends Seeder
                 UniformItem::query()->create(['level_id' => $level->id, 'name' => $name, 'price' => $price]);
             }
 
+            $bankAccount = CashAccount::query()->create([
+                'level_id' => $level->id,
+                'type' => CashAccountType::Bank,
+                'name' => 'BSI '.$level->name,
+                'bank_name' => 'Bank Syariah Indonesia',
+                'account_number' => '71'.str_pad((string) $level->id, 8, '0', STR_PAD_LEFT),
+            ]);
+
+            $ledger = app(CashLedger::class);
+            $ledger->recordOpeningBalance(CashAccount::cashBoxFor($level), 5_000_000, $academicYear->starts_on);
+            $ledger->recordOpeningBalance($bankAccount, 25_000_000, $academicYear->starts_on);
+            $ledger->recordIncome($bankAccount, TransactionCategory::query()->where('name', 'Donasi')->firstOrFail(), 2_500_000, $academicYear->starts_on->addDays(20), 'Donasi wali murid untuk kegiatan', 'Hamba Allah');
+            $ledger->recordExpense(CashAccount::cashBoxFor($level), TransactionCategory::query()->where('name', 'ATK')->firstOrFail(), 750_000, $academicYear->starts_on->addDays(25), 'Pembelian ATK semester ganjil', 'Toko Sinar Jaya');
+            $ledger->transfer(CashAccount::cashBoxFor($level), $bankAccount, 1_000_000, $academicYear->starts_on->addDays(30), 'Setor tunai ke bank');
+
             PaymentChannel::query()->create([
                 'level_id' => $level->id,
+                'cash_account_id' => $bankAccount->id,
                 'type' => PaymentChannelType::BankAccount,
                 'name' => 'BSI '.$level->name.' Lentera',
                 'bank_name' => 'Bank Syariah Indonesia',

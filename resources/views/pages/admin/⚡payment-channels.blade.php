@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\CashAccountType;
 use App\Enums\PaymentChannelType;
 use App\Models\ActivityLog;
+use App\Models\CashAccount;
 use App\Models\Level;
 use App\Models\PaymentChannel;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,6 +20,8 @@ new #[Title('Rekening & QRIS')] class extends Component {
     public ?int $editingId = null;
 
     public ?int $level_id = null;
+
+    public ?int $cash_account_id = null;
 
     public string $type = 'rekening';
 
@@ -49,13 +53,34 @@ new #[Title('Rekening & QRIS')] class extends Component {
     }
 
     /**
+     * Bank accounts of the level chosen in the form.
+     *
+     * @return Collection<int, CashAccount>
+     */
+    #[Computed]
+    public function bankAccounts(): Collection
+    {
+        return CashAccount::query()
+            ->where('level_id', $this->level_id)
+            ->where('type', CashAccountType::Bank)
+            ->active()
+            ->orderBy('name')
+            ->get();
+    }
+
+    public function updatedLevelId(): void
+    {
+        $this->cash_account_id = null;
+    }
+
+    /**
      * @return Collection<int, PaymentChannel>
      */
     #[Computed]
     public function channels(): Collection
     {
         return PaymentChannel::query()
-            ->with('level')
+            ->with('level', 'cashAccount')
             ->when($this->activeLevel, fn ($query, Level $level) => $query->whereBelongsTo($level))
             ->orderBy(Level::query()->select('sort_order')->whereColumn('levels.id', 'payment_channels.level_id'))
             ->orderBy('type')
@@ -68,7 +93,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
         $this->authorize('manage-payment-settings');
 
         $this->resetValidation();
-        $this->reset('editingId', 'name', 'bank_name', 'account_number', 'account_holder', 'qrisImage');
+        $this->reset('editingId', 'name', 'bank_name', 'account_number', 'account_holder', 'qrisImage', 'cash_account_id');
         $this->type = PaymentChannelType::BankAccount->value;
         $this->is_active = true;
         $this->level_id = $this->activeLevel?->id;
@@ -84,6 +109,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
         $this->reset('qrisImage');
         $this->editingId = $channel->id;
         $this->level_id = $channel->level_id;
+        $this->cash_account_id = $channel->cash_account_id;
         $this->type = $channel->type->value;
         $this->name = $channel->name;
         $this->bank_name = (string) $channel->bank_name;
@@ -103,6 +129,10 @@ new #[Title('Rekening & QRIS')] class extends Component {
 
         $validated = $this->validate([
             'level_id' => ['required', 'integer', Rule::exists(Level::class, 'id')],
+            'cash_account_id' => [
+                'required', 'integer',
+                Rule::exists(CashAccount::class, 'id')->where('level_id', $this->level_id)->where('type', CashAccountType::Bank->value),
+            ],
             'type' => ['required', Rule::enum(PaymentChannelType::class)],
             'name' => ['required', 'string', 'max:100'],
             'bank_name' => [Rule::requiredIf($isBankAccount), 'nullable', 'string', 'max:100'],
@@ -112,6 +142,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
             'is_active' => ['boolean'],
         ], [], [
             'level_id' => 'jenjang',
+            'cash_account_id' => 'akun kas penampung',
             'type' => 'jenis',
             'name' => 'nama',
             'bank_name' => 'nama bank',
@@ -122,6 +153,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
 
         $attributes = [
             'level_id' => $validated['level_id'],
+            'cash_account_id' => $validated['cash_account_id'],
             'type' => $validated['type'],
             'name' => $validated['name'],
             'bank_name' => $isBankAccount ? $validated['bank_name'] : null,
@@ -172,6 +204,9 @@ new #[Title('Rekening & QRIS')] class extends Component {
                                 @endunless
                             </div>
                             <h3 class="mt-2 font-semibold">{{ $channel->name }}</h3>
+                            <p @class(['text-xs', 'text-error' => $channel->cashAccount === null, 'text-base-content/60' => $channel->cashAccount !== null])>
+                                Masuk ke: {{ $channel->cashAccount?->name ?? 'belum dihubungkan ke akun kas' }}
+                            </p>
                         </div>
                         <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $channel->id }})" aria-label="Ubah">
                             <x-icon name="pencil-square" class="size-4" />
@@ -199,7 +234,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
     <x-modal name="channel-form" :title="$editingId ? 'Ubah tujuan pembayaran' : 'Tambah tujuan pembayaran'">
         <form wire:submit="save" class="space-y-4">
             <div class="grid gap-4 sm:grid-cols-2">
-                <x-select wire:model="level_id" label="Jenjang" placeholder="Pilih jenjang" required>
+                <x-select wire:model.live="level_id" label="Jenjang" placeholder="Pilih jenjang" required>
                     @foreach ($this->levels as $level)
                         <option value="{{ $level->id }}" wire:key="form-level-{{ $level->id }}">{{ $level->name }}</option>
                     @endforeach
@@ -211,6 +246,14 @@ new #[Title('Rekening & QRIS')] class extends Component {
                 </x-select>
             </div>
             <x-input wire:model="name" label="Nama tampilan" placeholder="contoh: BSI SD Lentera" required />
+            <x-select wire:model="cash_account_id" label="Uang masuk ke akun kas" placeholder="Pilih rekening bank di Akun Kas" required>
+                @foreach ($this->bankAccounts as $bankAccount)
+                    <option value="{{ $bankAccount->id }}" wire:key="bank-account-{{ $bankAccount->id }}">{{ $bankAccount->name }} · {{ $bankAccount->account_number }}</option>
+                @endforeach
+            </x-select>
+            @if ($level_id && $this->bankAccounts->isEmpty())
+                <p class="text-sm text-warning">Jenjang ini belum punya rekening bank di menu Akun Kas. Tambahkan terlebih dahulu.</p>
+            @endif
 
             @if ($type === 'rekening')
                 <div class="grid gap-4 sm:grid-cols-2">

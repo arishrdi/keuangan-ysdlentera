@@ -2,6 +2,7 @@
 
 use App\Enums\PaymentChannelType;
 use App\Models\AcademicYear;
+use App\Models\CashAccount;
 use App\Models\FeeRate;
 use App\Models\Level;
 use App\Models\PaymentCategory;
@@ -90,15 +91,38 @@ it('stores a QRIS image privately', function () {
     Storage::fake('local');
     $this->actingAs(User::factory()->admin()->create());
 
+    $level = Level::factory()->sd()->create();
+    $bankAccount = CashAccount::factory()->bank()->for($level)->create();
+
     Livewire::test('pages::admin.payment-channels')
-        ->set('level_id', Level::factory()->sd()->create()->id)
+        ->set('level_id', $level->id)
+        ->set('cash_account_id', $bankAccount->id)
         ->set('type', PaymentChannelType::Qris->value)
         ->set('name', 'QRIS SD')
         ->set('qrisImage', UploadedFile::fake()->image('qris.png'))
         ->call('save')
         ->assertHasNoErrors();
 
-    Storage::disk('local')->assertExists(PaymentChannel::query()->sole()->qris_image_path);
+    $channel = PaymentChannel::query()->sole();
+
+    Storage::disk('local')->assertExists($channel->qris_image_path);
+    expect($channel->cash_account_id)->toBe($bankAccount->id);
+});
+
+it('only links a channel to a bank account of the same level', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $sd = Level::factory()->sd()->create();
+    $smpBank = CashAccount::factory()->bank()->for(Level::factory()->smp())->create();
+
+    Livewire::test('pages::admin.payment-channels')
+        ->set('level_id', $sd->id)
+        ->set('cash_account_id', $smpBank->id)
+        ->set('name', 'BSI SD')
+        ->set('bank_name', 'BSI')
+        ->set('account_number', '123')
+        ->set('account_holder', 'Yayasan')
+        ->call('save')
+        ->assertHasErrors(['cash_account_id' => 'exists']);
 });
 
 it('requires bank details for a bank account', function () {

@@ -405,6 +405,8 @@ new class extends Component {
                 @endif
                 <x-input wire:model="notes" label="Catatan (opsional)" />
 
+                @error('payment') <div role="alert" class="alert alert-error text-sm"><span>{{ $message }}</span></div> @enderror
+
                 @foreach ($errors->get('allocations.*') as $messages)
                     <p class="text-sm text-error">{{ $messages[0] }}</p>
                 @endforeach

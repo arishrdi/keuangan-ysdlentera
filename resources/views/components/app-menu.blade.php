@@ -18,6 +18,9 @@
             'items' => [
                 ['label' => 'Tagihan', 'route' => 'billing.index', 'icon' => 'document-text', 'active' => 'billing.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Pembayaran', 'route' => 'payments.index', 'icon' => 'banknotes', 'active' => 'payments.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
+                ['label' => 'Pemasukan', 'route' => 'finance.incomes', 'icon' => 'arrow-down-tray', 'active' => 'finance.incomes', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
+                ['label' => 'Pengeluaran', 'route' => 'finance.expenses', 'icon' => 'arrow-up-tray', 'active' => 'finance.expenses', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
+                ['label' => 'Kas', 'route' => 'finance.cash', 'icon' => 'wallet', 'active' => 'finance.cash', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Tagihan', 'route' => 'guardian.bills', 'icon' => 'document-text', 'active' => 'guardian.bills', 'roles' => [Role::Guardian]],
                 ['label' => 'Cicilan', 'route' => 'guardian.installments', 'icon' => 'chart-pie', 'active' => 'guardian.installments', 'roles' => [Role::Guardian]],
                 ['label' => 'Riwayat Pembayaran', 'route' => 'guardian.payments', 'icon' => 'clock', 'active' => 'guardian.payments', 'roles' => [Role::Guardian]],
@@ -34,11 +37,13 @@
             ],
         ],
         [
-            'title' => 'Pengaturan Pembayaran',
+            'title' => 'Pengaturan Keuangan',
             'items' => [
                 ['label' => 'Kategori & Tarif', 'route' => 'admin.fee-rates', 'icon' => 'tag', 'active' => 'admin.fee-rates', 'roles' => [Role::Admin]],
                 ['label' => 'Katalog Seragam', 'route' => 'admin.uniform-items', 'icon' => 'shopping-bag', 'active' => 'admin.uniform-items', 'roles' => [Role::Admin]],
+                ['label' => 'Akun Kas', 'route' => 'admin.cash-accounts', 'icon' => 'wallet', 'active' => 'admin.cash-accounts', 'roles' => [Role::Admin]],
                 ['label' => 'Rekening & QRIS', 'route' => 'admin.payment-channels', 'icon' => 'credit-card', 'active' => 'admin.payment-channels', 'roles' => [Role::Admin]],
+                ['label' => 'Kategori Transaksi', 'route' => 'admin.transaction-categories', 'icon' => 'tag', 'active' => 'admin.transaction-categories', 'roles' => [Role::Admin]],
             ],
         ],
         [

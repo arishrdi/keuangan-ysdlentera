@@ -91,8 +91,38 @@
                 </div>
             </div>
 
+            @php
+                $cashBalance = (int) \App\Models\CashAccount::query()
+                    ->when($activeLevel, fn ($query) => $query->whereBelongsTo($activeLevel))
+                    ->withBalance()
+                    ->get()
+                    ->sum('balance');
+                $monthEntries = \App\Models\CashTransaction::query()
+                    ->effective()
+                    ->when($activeLevel, fn ($query) => $query->whereBelongsTo($activeLevel))
+                    ->whereBetween('transacted_on', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()]);
+                $monthIncome = (int) (clone $monthEntries)->whereIn('type', [\App\Enums\CashTransactionType::StudentPayment, \App\Enums\CashTransactionType::Income])->sum('amount');
+                $monthExpense = (int) (clone $monthEntries)->where('type', \App\Enums\CashTransactionType::Expense)->sum('amount');
+            @endphp
+
+            <div class="stats stats-vertical mt-6 w-full border border-base-300 shadow-sm md:stats-horizontal">
+                <div class="stat">
+                    <div class="stat-title">Saldo kas</div>
+                    <div class="stat-value text-2xl text-primary">{{ \Illuminate\Support\Number::rupiah($cashBalance) }}</div>
+                    <div class="stat-desc"><a href="{{ route('finance.cash') }}" class="link" wire:navigate>Lihat mutasi</a></div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">Pemasukan {{ now()->translatedFormat('F') }}</div>
+                    <div class="stat-value text-2xl text-success">{{ \Illuminate\Support\Number::rupiah($monthIncome) }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">Pengeluaran {{ now()->translatedFormat('F') }}</div>
+                    <div class="stat-value text-2xl text-error">{{ \Illuminate\Support\Number::rupiah($monthExpense) }}</div>
+                </div>
+            </div>
+
             <div class="mt-6 rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">
-                Ringkasan kas, pemasukan, pengeluaran, dan anggaran akan tampil di sini setelah modul berikutnya selesai dibangun.
+                Ringkasan anggaran akan tampil di sini setelah modul anggaran selesai dibangun.
             </div>
         @endunless
     @else

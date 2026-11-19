@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActiveLevelController;
+use App\Http\Controllers\CashTransactionProofController;
 use App\Http\Controllers\PaymentChannelQrisController;
 use App\Http\Controllers\PaymentProofController;
 use App\Http\Controllers\PaymentReceiptController;
@@ -31,6 +32,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('tagihan', 'pages::billing.index')->name('billing.index');
             Route::livewire('tagihan/siswa/{student}', 'pages::billing.student')->name('billing.student');
             Route::livewire('pembayaran', 'pages::payments.index')->name('payments.index');
+            Route::livewire('pemasukan', 'pages::finance.incomes')->name('finance.incomes');
+            Route::livewire('pengeluaran', 'pages::finance.expenses')->name('finance.expenses');
+            Route::livewire('kas', 'pages::finance.cash')->name('finance.cash');
+            Route::get('kas/{cashTransaction}/bukti', CashTransactionProofController::class)->name('finance.proof');
         });
 
         Route::middleware('role:bendahara')->group(function () {
@@ -52,6 +57,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('kategori-tarif', 'pages::admin.fee-rates')->name('admin.fee-rates');
             Route::livewire('seragam', 'pages::admin.uniform-items')->name('admin.uniform-items');
             Route::livewire('rekening', 'pages::admin.payment-channels')->name('admin.payment-channels');
+            Route::livewire('akun-kas', 'pages::admin.cash-accounts')->name('admin.cash-accounts');
+            Route::livewire('kategori-transaksi', 'pages::admin.transaction-categories')->name('admin.transaction-categories');
         });
     });
 });

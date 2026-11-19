@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Carbon;
 
 /**
@@ -123,6 +124,16 @@ class Payment extends Model
     public function canceller(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
+    /**
+     * The cash entry recording this payment, once verified.
+     *
+     * @return HasOne<CashTransaction, $this>
+     */
+    public function cashTransaction(): HasOne
+    {
+        return $this->hasOne(CashTransaction::class)->whereNull('reversal_of_id');
     }
 
     public function hasReceipt(): bool
