@@ -25,26 +25,36 @@ new class extends Component {
     }
 }; ?>
 
-<flux:modal name="confirm-user-deletion" :show="$errors->isNotEmpty()" focusable class="max-w-lg">
-    <form method="POST" wire:submit="deleteUser" class="space-y-6">
-        <div>
-            <flux:heading size="lg">{{ __('Are you sure you want to delete your account?') }}</flux:heading>
+<dialog
+    id="confirm-user-deletion"
+    class="modal"
+    wire:ignore.self
+    x-data
+    x-on:open-modal.window="if ($event.detail === 'confirm-user-deletion') { $el.showModal(); $nextTick(() => $el.querySelector('input')?.focus()) }"
+>
+    <div class="modal-box max-w-lg">
+        <form method="POST" wire:submit="deleteUser" class="space-y-6">
+            <div>
+                <h3 class="text-lg font-semibold">{{ __('Are you sure you want to delete your account?') }}</h3>
 
-            <flux:subheading>
-                {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
-            </flux:subheading>
-        </div>
+                <p class="mt-2 text-sm text-base-content/70">
+                    {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
+                </p>
+            </div>
 
-        <flux:input wire:model="password" :label="__('Password')" type="password" viewable />
+            <x-input wire:model="password" :label="__('Password')" type="password" viewable />
 
-        <div class="flex justify-end space-x-2 rtl:space-x-reverse">
-            <flux:modal.close>
-                <flux:button variant="filled">{{ __('Cancel') }}</flux:button>
-            </flux:modal.close>
+            <div class="modal-action">
+                <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">{{ __('Cancel') }}</button>
 
-            <flux:button variant="danger" type="submit" data-test="confirm-delete-user-button">
-                {{ __('Delete account') }}
-            </flux:button>
-        </div>
+                <button type="submit" class="btn btn-error" data-test="confirm-delete-user-button">
+                    {{ __('Delete account') }}
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+        <button>{{ __('Close') }}</button>
     </form>
-</flux:modal>
+</dialog>

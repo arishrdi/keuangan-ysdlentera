@@ -1,7 +1,6 @@
 <?php
 
 use App\Concerns\PasswordValidationRules;
-use Flux\Flux;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Actions\DisableTwoFactorAuthentication;
@@ -49,7 +48,7 @@ new #[Title('Security settings')] class extends Component {
 
         $this->reset('current_password', 'password', 'password_confirmation');
 
-        Flux::toast(variant: 'success', text: __('Password updated.'));
+        $this->dispatch('toast', variant: 'success', text: __('Password updated.'));
     }
 
 
@@ -58,11 +57,11 @@ new #[Title('Security settings')] class extends Component {
 <section class="w-full">
     @include('partials.settings-heading')
 
-    <flux:heading level="2" class="sr-only">{{ __('Security settings') }}</flux:heading>
+    <h2 class="sr-only">{{ __('Security settings') }}</h2>
 
     <x-pages::settings.layout :heading="__('Update password')" :subheading="__('Ensure your account is using a long, random password to stay secure')">
         <form method="POST" wire:submit="updatePassword" class="mt-6 space-y-6">
-            <flux:input
+            <x-input
                 wire:model="current_password"
                 :label="__('Current password')"
                 type="password"
@@ -70,7 +69,7 @@ new #[Title('Security settings')] class extends Component {
                 autocomplete="current-password"
                 viewable
             />
-            <flux:input
+            <x-input
                 wire:model="password"
                 :label="__('New password')"
                 type="password"
@@ -79,7 +78,7 @@ new #[Title('Security settings')] class extends Component {
                 passwordrules="{{ \Illuminate\Validation\Rules\Password::defaults()->toPasswordRulesString() }}"
                 viewable
             />
-            <flux:input
+            <x-input
                 wire:model="password_confirmation"
                 :label="__('Confirm password')"
                 type="password"
@@ -90,9 +89,9 @@ new #[Title('Security settings')] class extends Component {
             />
 
             <div class="flex items-center gap-4">
-                <flux:button variant="primary" type="submit" data-test="update-password-button">
+                <button type="submit" class="btn btn-primary" data-test="update-password-button">
                     {{ __('Save') }}
-                </flux:button>
+                </button>
             </div>
         </form>
 

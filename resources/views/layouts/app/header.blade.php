@@ -1,84 +1,99 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="dark">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
         @include('partials.head')
     </head>
-    <body class="min-h-screen bg-white dark:bg-zinc-800">
-        <flux:header container class="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.toggle class="lg:hidden mr-2" icon="bars-2" inset="left" />
+    <body class="min-h-screen">
+        <div class="drawer">
+            <input id="app-header-drawer" type="checkbox" class="drawer-toggle" />
 
-            <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
+            <div class="drawer-content flex min-h-screen flex-col">
+                <div class="navbar gap-2 border-b border-base-300 bg-base-200 px-4">
+                    <div class="navbar-start gap-2">
+                        <label for="app-header-drawer" class="btn btn-ghost btn-square drawer-button lg:hidden" aria-label="{{ __('Open menu') }}">
+                            <x-icon name="bars-2" />
+                        </label>
 
-            <flux:navbar class="-mb-px max-lg:hidden">
-                <flux:navbar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                    {{ __('Dashboard') }}
-                </flux:navbar.item>
-            </flux:navbar>
+                        <x-app-logo href="{{ route('dashboard') }}" wire:navigate />
 
-            <flux:spacer />
+                        <ul class="menu menu-horizontal ms-4 max-lg:hidden">
+                            <li>
+                                <a href="{{ route('dashboard') }}" @class(['menu-active' => request()->routeIs('dashboard')]) wire:navigate>
+                                    <x-icon name="layout-grid" />
+                                    {{ __('Dashboard') }}
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
 
-            <flux:navbar class="me-1.5 space-x-0.5 rtl:space-x-reverse py-0!">
-                <flux:tooltip :content="__('Search')" position="bottom">
-                    <flux:navbar.item class="!h-10 [&>div>svg]:size-5" icon="magnifying-glass" href="#" :label="__('Search')" />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Repository')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="folder-git-2"
-                        href="https://github.com/laravel/livewire-starter-kit"
-                        target="_blank"
-                        :label="__('Repository')"
-                    />
-                </flux:tooltip>
-                <flux:tooltip :content="__('Documentation')" position="bottom">
-                    <flux:navbar.item
-                        class="h-10 max-lg:hidden [&>div>svg]:size-5"
-                        icon="book-open-text"
-                        href="https://laravel.com/docs/starter-kits#livewire"
-                        target="_blank"
-                        :label="__('Documentation')"
-                    />
-                </flux:tooltip>
-            </flux:navbar>
+                    <div class="navbar-end gap-1">
+                        <div class="tooltip tooltip-bottom" data-tip="{{ __('Search') }}">
+                            <a href="#" class="btn btn-ghost btn-square" aria-label="{{ __('Search') }}">
+                                <x-icon name="magnifying-glass" />
+                            </a>
+                        </div>
+                        <div class="tooltip tooltip-bottom max-lg:hidden" data-tip="{{ __('Repository') }}">
+                            <a href="https://github.com/laravel/livewire-starter-kit" target="_blank" class="btn btn-ghost btn-square" aria-label="{{ __('Repository') }}">
+                                <x-icon name="folder-git-2" />
+                            </a>
+                        </div>
+                        <div class="tooltip tooltip-bottom max-lg:hidden" data-tip="{{ __('Documentation') }}">
+                            <a href="https://laravel.com/docs/starter-kits#livewire" target="_blank" class="btn btn-ghost btn-square" aria-label="{{ __('Documentation') }}">
+                                <x-icon name="book-open-text" />
+                            </a>
+                        </div>
 
-            <x-desktop-user-menu />
-        </flux:header>
+                        <x-desktop-user-menu :compact="true" />
+                    </div>
+                </div>
 
-        <!-- Mobile Menu -->
-        <flux:sidebar collapsible="mobile" sticky class="lg:hidden border-e border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900">
-            <flux:sidebar.header>
-                <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
-                <flux:sidebar.collapse class="in-data-flux-sidebar-on-desktop:not-in-data-flux-sidebar-collapsed-desktop:-mr-2" />
-            </flux:sidebar.header>
+                {{ $slot }}
+            </div>
 
-            <flux:sidebar.nav>
-                <flux:sidebar.group :heading="__('Platform')">
-                    <flux:sidebar.item icon="layout-grid" :href="route('dashboard')" :current="request()->routeIs('dashboard')" wire:navigate>
-                        {{ __('Dashboard')  }}
-                    </flux:sidebar.item>
-                </flux:sidebar.group>
-            </flux:sidebar.nav>
+            <!-- Mobile Menu -->
+            <div class="drawer-side z-40 lg:hidden">
+                <label for="app-header-drawer" aria-label="{{ __('Close menu') }}" class="drawer-overlay"></label>
 
-            <flux:spacer />
+                <aside class="flex min-h-full w-64 flex-col gap-2 border-e border-base-300 bg-base-200 p-3">
+                    <div class="flex items-center justify-between">
+                        <x-app-logo :sidebar="true" href="{{ route('dashboard') }}" wire:navigate />
+                        <label for="app-header-drawer" class="btn btn-ghost btn-sm btn-square" aria-label="{{ __('Close menu') }}">
+                            <x-icon name="x-mark" />
+                        </label>
+                    </div>
 
-            <flux:sidebar.nav>
-                <flux:sidebar.item icon="folder-git-2" href="https://github.com/laravel/livewire-starter-kit" target="_blank">
-                    {{ __('Repository') }}
-                </flux:sidebar.item>
-                <flux:sidebar.item icon="book-open-text" href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
-                    {{ __('Documentation') }}
-                </flux:sidebar.item>
-            </flux:sidebar.nav>
-        </flux:sidebar>
+                    <ul class="menu w-full px-0">
+                        <li class="menu-title">{{ __('Platform') }}</li>
+                        <li>
+                            <a href="{{ route('dashboard') }}" @class(['menu-active' => request()->routeIs('dashboard')]) wire:navigate>
+                                <x-icon name="layout-grid" />
+                                {{ __('Dashboard') }}
+                            </a>
+                        </li>
+                    </ul>
 
-        {{ $slot }}
+                    <div class="flex-1"></div>
+
+                    <ul class="menu w-full px-0">
+                        <li>
+                            <a href="https://github.com/laravel/livewire-starter-kit" target="_blank">
+                                <x-icon name="folder-git-2" />
+                                {{ __('Repository') }}
+                            </a>
+                        </li>
+                        <li>
+                            <a href="https://laravel.com/docs/starter-kits#livewire" target="_blank">
+                                <x-icon name="book-open-text" />
+                                {{ __('Documentation') }}
+                            </a>
+                        </li>
+                    </ul>
+                </aside>
+            </div>
+        </div>
 
         @persist('toast')
-            <flux:toast.group>
-                <flux:toast />
-            </flux:toast.group>
+            <x-toast />
         @endpersist
-
-        @fluxScripts
     </body>
 </html>

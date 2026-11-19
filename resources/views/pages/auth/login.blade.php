@@ -10,7 +10,7 @@
             @csrf
 
             <!-- Email Address -->
-            <flux:input
+            <x-input
                 name="email"
                 :label="__('Email address')"
                 :value="old('email')"
@@ -23,7 +23,7 @@
 
             <!-- Password -->
             <div class="relative">
-                <flux:input
+                <x-input
                     name="password"
                     :label="__('Password')"
                     type="password"
@@ -34,19 +34,22 @@
                 />
 
                 @if (Route::has('password.request'))
-                    <flux:link class="absolute top-0 text-sm end-0" :href="route('password.request')" wire:navigate>
+                    <a href="{{ route('password.request') }}" class="link absolute end-0 top-0 text-sm" wire:navigate>
                         {{ __('Forgot your password?') }}
-                    </flux:link>
+                    </a>
                 @endif
             </div>
 
             <!-- Remember Me -->
-            <flux:checkbox name="remember" :label="__('Remember me')" :checked="old('remember')" />
+            <label class="label cursor-pointer gap-2 text-base-content">
+                <input type="checkbox" name="remember" class="checkbox checkbox-sm" @checked(old('remember')) />
+                <span class="text-sm">{{ __('Remember me') }}</span>
+            </label>
 
             <div class="flex items-center justify-end">
-                <flux:button variant="primary" type="submit" class="w-full" data-test="login-button">
+                <button type="submit" class="btn btn-primary w-full" data-test="login-button">
                     {{ __('Log in') }}
-                </flux:button>
+                </button>
             </div>
         </form>
 

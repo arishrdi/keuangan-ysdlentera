@@ -12,4 +12,16 @@
 @fonts
 
 @vite(['resources/css/app.css', 'resources/js/app.js'])
-@fluxAppearance
+<script>
+    window.applyAppearance = function (appearance = localStorage.getItem('appearance') || 'system') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const theme = appearance === 'system' ? (prefersDark ? 'dark' : 'light') : appearance;
+
+        document.documentElement.setAttribute('data-theme', theme);
+    };
+
+    window.applyAppearance();
+
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => window.applyAppearance());
+    document.addEventListener('livewire:navigated', () => window.applyAppearance());
+</script>
