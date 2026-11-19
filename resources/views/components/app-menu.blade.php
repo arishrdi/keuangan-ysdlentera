@@ -21,6 +21,7 @@
                 ['label' => 'Pemasukan', 'route' => 'finance.incomes', 'icon' => 'arrow-down-tray', 'active' => 'finance.incomes', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Pengeluaran', 'route' => 'finance.expenses', 'icon' => 'arrow-up-tray', 'active' => 'finance.expenses', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Kas', 'route' => 'finance.cash', 'icon' => 'wallet', 'active' => 'finance.cash', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
+                ['label' => 'Anggaran', 'route' => 'budgets.index', 'icon' => 'clipboard-document-check', 'active' => 'budgets.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Tagihan', 'route' => 'guardian.bills', 'icon' => 'document-text', 'active' => 'guardian.bills', 'roles' => [Role::Guardian]],
                 ['label' => 'Cicilan', 'route' => 'guardian.installments', 'icon' => 'chart-pie', 'active' => 'guardian.installments', 'roles' => [Role::Guardian]],
                 ['label' => 'Riwayat Pembayaran', 'route' => 'guardian.payments', 'icon' => 'clock', 'active' => 'guardian.payments', 'roles' => [Role::Guardian]],

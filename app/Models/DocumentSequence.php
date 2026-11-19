@@ -25,6 +25,8 @@ class DocumentSequence extends Model
 
     public const string CASH_TRANSACTION = 'TRX';
 
+    public const string BUDGET = 'AGR';
+
     /**
      * Reserve the next number of a document type, e.g. "KWT/SD/2026/0001".
      */

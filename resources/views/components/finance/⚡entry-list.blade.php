@@ -1,8 +1,10 @@
 <?php
 
 use App\Actions\Cash\CashLedger;
+use App\Enums\BudgetStatus;
 use App\Enums\CashTransactionType;
 use App\Enums\TransactionCategoryType;
+use App\Models\BudgetProposal;
 use App\Models\CashAccount;
 use App\Models\CashTransaction;
 use App\Models\Level;
@@ -56,6 +58,9 @@ new class extends Component {
 
     public ?UploadedFile $proof = null;
 
+    #[Url(as: 'anggaran')]
+    public ?int $budgetId = null;
+
     public ?int $cancellingId = null;
 
     public string $cancellationReason = '';
@@ -65,6 +70,32 @@ new class extends Component {
         $this->kind = TransactionCategoryType::from($kind)->value;
         $this->from = $this->from ?: now()->startOfMonth()->toDateString();
         $this->until = $this->until ?: now()->endOfMonth()->toDateString();
+
+        if ($this->budgetId !== null && $this->canManage && ! $this->isIncome) {
+            $requestedBudgetId = $this->budgetId;
+            $this->create();
+            $this->budgetId = $this->budgets->firstWhere('id', $requestedBudgetId)?->id;
+        }
+    }
+
+    /**
+     * Approved budgets of the active level that expenses may be charged to.
+     *
+     * @return Collection<int, BudgetProposal>
+     */
+    #[Computed]
+    public function budgets(): Collection
+    {
+        if ($this->activeLevel === null || $this->isIncome) {
+            return new Collection;
+        }
+
+        return BudgetProposal::query()
+            ->whereBelongsTo($this->activeLevel)
+            ->whereIn('status', [BudgetStatus::Approved, BudgetStatus::Disbursing])
+            ->withRealizedAmount()
+            ->orderBy('number')
+            ->get();
     }
 
     public function updated(string $property): void
@@ -126,7 +157,7 @@ new class extends Component {
     public function entries(): LengthAwarePaginator
     {
         return $this->query()
-            ->with(['cashAccount', 'category', 'level', 'creator'])
+            ->with(['cashAccount', 'category', 'level', 'creator', 'budgetProposal'])
             ->latest('transacted_on')
             ->latest('id')
             ->paginate(30);
@@ -171,7 +202,7 @@ new class extends Component {
         }
 
         $this->resetValidation();
-        $this->reset('categoryId', 'amount', 'counterparty', 'description', 'proof');
+        $this->reset('categoryId', 'amount', 'counterparty', 'description', 'proof', 'budgetId');
         $this->accountId = $this->accounts->first()?->id;
         $this->transactedOn = now()->toDateString();
 
@@ -191,7 +222,9 @@ new class extends Component {
             'counterparty' => ['nullable', 'string', 'max:255'],
             'description' => ['required', 'string', 'max:255'],
             'proof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+            'budgetId' => ['nullable', 'integer', Rule::in($this->budgets->modelKeys())],
         ], [], [
+            'budgetId' => 'anggaran',
             'accountId' => 'akun kas',
             'categoryId' => 'kategori',
             'amount' => 'nominal',
@@ -211,12 +244,15 @@ new class extends Component {
             $this->proof,
         ];
 
-        $entry = $this->isIncome ? $ledger->recordIncome(...$arguments) : $ledger->recordExpense(...$arguments);
+        $entry = $this->isIncome
+            ? $ledger->recordIncome(...$arguments)
+            : $ledger->recordExpense(...$arguments, budget: $this->budgets->firstWhere('id', $this->budgetId));
 
         $this->dispatch('close-modal', name: 'entry-form-'.$this->kind);
         $this->dispatch('toast', variant: 'success', text: ($this->isIncome ? 'Pemasukan' : 'Pengeluaran').' '.$entry->number.' dicatat.');
         $this->reset('proof');
-        unset($this->entries, $this->total, $this->accounts);
+        $this->reset('budgetId');
+        unset($this->entries, $this->total, $this->accounts, $this->budgets);
     }
 
     public function confirmCancel(int $entryId): void
@@ -305,6 +341,9 @@ new class extends Component {
                         <td>{{ $entry->category?->name ?? $entry->type->label() }}</td>
                         <td>
                             {{ $entry->description }}
+                            @if ($entry->budgetProposal)
+                                <div class="text-xs"><a href="{{ route('budgets.show', $entry->budgetProposal) }}" class="link" wire:navigate>Anggaran {{ $entry->budgetProposal->number }}</a></div>
+                            @endif
                             @if ($entry->isCancelled())
                                 <div class="text-xs text-error">Dibatalkan: {{ $entry->cancellation_reason }}</div>
                             @endif
@@ -349,6 +388,13 @@ new class extends Component {
                     <x-input wire:model="amount" label="Nominal (Rp)" type="number" min="1" required />
                     <x-input wire:model="transactedOn" label="Tanggal" type="date" required />
                 </div>
+                @unless ($this->isIncome)
+                    <x-select wire:model="budgetId" label="Realisasi dari anggaran (opsional)" placeholder="Tidak terkait anggaran">
+                        @foreach ($this->budgets as $budget)
+                            <option value="{{ $budget->id }}" wire:key="budget-{{ $budget->id }}">{{ $budget->number }} · {{ $budget->title }} (sisa {{ \Illuminate\Support\Number::rupiah($budget->total_amount - (int) $budget->realized_amount) }})</option>
+                        @endforeach
+                    </x-select>
+                @endunless
                 <x-input wire:model="counterparty" :label="$this->isIncome ? 'Diterima dari (opsional)' : 'Dibayarkan kepada (opsional)'" />
                 <x-input wire:model="description" label="Keterangan" required />
                 <fieldset class="fieldset p-0">

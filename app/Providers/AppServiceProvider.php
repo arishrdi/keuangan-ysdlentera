@@ -50,6 +50,8 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-cash', fn (User $user): bool => $user->hasRole(Role::Treasurer));
 
+        Gate::define('manage-budgets', fn (User $user): bool => $user->hasRole(Role::Treasurer));
+
         Gate::define('view-finance', fn (User $user): bool => $user->hasRole(Role::Treasurer, Role::Principal, Role::Foundation));
 
         Gate::define('view-student-billing', fn (User $user, Student $student): bool => $user->hasRole(Role::Treasurer, Role::Principal, Role::Foundation)

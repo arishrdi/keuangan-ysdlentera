@@ -121,8 +121,38 @@
                 </div>
             </div>
 
-            <div class="mt-6 rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">
-                Ringkasan anggaran akan tampil di sini setelah modul anggaran selesai dibangun.
+            @php
+                $budgets = \App\Models\BudgetProposal::query()
+                    ->where('status', '!=', \App\Enums\BudgetStatus::Draft)
+                    ->when($activeLevel, fn ($query) => $query->whereBelongsTo($activeLevel))
+                    ->withRealizedAmount()
+                    ->get();
+                $approvedBudgets = $budgets->filter(fn ($budget) => $budget->status->acceptsExpenses() || $budget->status === \App\Enums\BudgetStatus::Completed);
+                $awaitingStatus = collect(\App\Enums\BudgetStatus::cases())->first(fn ($status) => $status->awaitingRole() === $user->role);
+                $awaitingCount = $awaitingStatus
+                    ? $budgets->where('status', $awaitingStatus)->count()
+                    : $budgets->whereIn('status', [\App\Enums\BudgetStatus::AwaitingPrincipal, \App\Enums\BudgetStatus::AwaitingFoundation])->count();
+            @endphp
+
+            <div class="stats stats-vertical mt-6 w-full border border-base-300 shadow-sm md:stats-horizontal">
+                <div class="stat">
+                    <div class="stat-title">Anggaran diajukan</div>
+                    <div class="stat-value text-2xl">{{ \Illuminate\Support\Number::rupiah($budgets->sum('total_amount')) }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">Disetujui</div>
+                    <div class="stat-value text-2xl text-success">{{ \Illuminate\Support\Number::rupiah($approvedBudgets->sum('total_amount')) }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">Digunakan / sisa</div>
+                    <div class="stat-value text-2xl">{{ \Illuminate\Support\Number::rupiah($approvedBudgets->sum('realized_amount')) }}</div>
+                    <div class="stat-desc">Sisa {{ \Illuminate\Support\Number::rupiah($approvedBudgets->sum('total_amount') - $approvedBudgets->sum('realized_amount')) }}</div>
+                </div>
+                <div class="stat">
+                    <div class="stat-title">{{ $awaitingStatus ? 'Menunggu persetujuan Anda' : 'Menunggu persetujuan' }}</div>
+                    <div @class(['stat-value text-2xl', 'text-warning' => $awaitingCount > 0])>{{ $awaitingCount }}</div>
+                    <div class="stat-desc"><a href="{{ route('budgets.index') }}" class="link" wire:navigate>Lihat anggaran</a></div>
+                </div>
             </div>
         @endunless
     @else

@@ -3,10 +3,15 @@
 namespace Database\Seeders;
 
 use App\Actions\Billing\IssueBills;
+use App\Actions\Budgets\DecideBudgetProposal;
+use App\Actions\Budgets\SaveBudgetProposal;
+use App\Actions\Budgets\SubmitBudgetProposal;
 use App\Actions\Cash\CashLedger;
+use App\Enums\BudgetAction;
 use App\Enums\CashAccountType;
 use App\Enums\PaymentChannelType;
 use App\Enums\Role;
+use App\Enums\TransactionCategoryType;
 use App\Models\AcademicYear;
 use App\Models\CashAccount;
 use App\Models\Classroom;
@@ -19,6 +24,7 @@ use App\Models\TransactionCategory;
 use App\Models\UniformItem;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Auth;
 
 class DemoSeeder extends Seeder
 {
@@ -75,6 +81,54 @@ class DemoSeeder extends Seeder
             ->create(['name' => 'Wali Demo', 'phone' => '081234567890', 'email' => null]);
 
         $this->seedBilling($academicYear);
+        $this->seedBudgets();
+    }
+
+    /**
+     * Seed SD budget proposals in different stages of approval.
+     */
+    private function seedBudgets(): void
+    {
+        $level = Level::query()->where('code', 'SD')->firstOrFail();
+        $treasurer = User::query()->where('role', Role::Treasurer)->firstOrFail();
+        $principal = User::query()->where('role', Role::Principal)->firstOrFail();
+        $foundation = User::query()->where('role', Role::Foundation)->firstOrFail();
+        $category = fn (string $name) => TransactionCategory::query()->where('type', TransactionCategoryType::Budget)->where('name', $name)->firstOrFail();
+        $save = app(SaveBudgetProposal::class);
+        $submit = app(SubmitBudgetProposal::class);
+        $decide = app(DecideBudgetProposal::class);
+
+        Auth::login($treasurer);
+
+        $laptops = $save->handle($treasurer, null, $level, $category('Pengadaan barang'), 'Pengadaan laptop laboratorium', 'Laptop lama sudah tidak layak untuk pembelajaran TIK.', [
+            ['name' => 'Laptop', 'quantity' => 2, 'unit' => 'unit', 'unit_price' => 10_000_000],
+            ['name' => 'Printer', 'quantity' => 1, 'unit' => 'unit', 'unit_price' => 2_000_000],
+            ['name' => 'ATK', 'quantity' => 5, 'unit' => 'paket', 'unit_price' => 200_000],
+        ]);
+        $submit->handle($laptops, $treasurer);
+        $decide->handle($laptops->refresh(), $principal, BudgetAction::Approved, 'Sesuai kebutuhan.');
+        $decide->handle($laptops->refresh(), $foundation, BudgetAction::Approved);
+        app(CashLedger::class)->recordExpense(
+            CashAccount::query()->whereBelongsTo($level)->where('type', CashAccountType::Bank)->firstOrFail(),
+            TransactionCategory::query()->where('type', TransactionCategoryType::Expense)->where('name', 'Sarana & prasarana')->firstOrFail(),
+            10_000_000,
+            now(),
+            'Pembelian laptop pertama',
+            'Toko Komputer Jaya',
+            budget: $laptops->refresh(),
+        );
+
+        $trip = $save->handle($treasurer, null, $level, $category('Kegiatan siswa'), 'Study tour kelas 6', 'Kegiatan akhir tahun siswa kelas 6.', [
+            ['name' => 'Sewa bus', 'quantity' => 2, 'unit' => 'bus', 'unit_price' => 3_500_000],
+            ['name' => 'Tiket masuk', 'quantity' => 60, 'unit' => 'orang', 'unit_price' => 25_000],
+        ]);
+        $submit->handle($trip, $treasurer);
+
+        $save->handle($treasurer, null, $level, $category('Operasional'), 'Perbaikan atap kelas', 'Atap kelas 2A bocor.', [
+            ['name' => 'Genteng dan upah tukang', 'quantity' => 1, 'unit' => 'paket', 'unit_price' => 4_500_000],
+        ]);
+
+        Auth::logout();
     }
 
     /**

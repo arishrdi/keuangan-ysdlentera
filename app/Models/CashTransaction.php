@@ -29,6 +29,7 @@ use Illuminate\Support\Carbon;
  * @property string|null $counterparty
  * @property int|null $transaction_category_id
  * @property int|null $payment_id
+ * @property int|null $budget_proposal_id
  * @property int|null $related_transaction_id
  * @property int|null $reversal_of_id
  * @property string|null $proof_path
@@ -41,7 +42,7 @@ use Illuminate\Support\Carbon;
  */
 #[Fillable([
     'number', 'level_id', 'cash_account_id', 'type', 'direction', 'amount', 'transacted_on', 'description', 'counterparty',
-    'transaction_category_id', 'payment_id', 'related_transaction_id', 'reversal_of_id', 'proof_path',
+    'transaction_category_id', 'payment_id', 'budget_proposal_id', 'related_transaction_id', 'reversal_of_id', 'proof_path',
     'cancelled_at', 'cancelled_by', 'cancellation_reason', 'created_by',
 ])]
 class CashTransaction extends Model
@@ -93,6 +94,14 @@ class CashTransaction extends Model
     public function payment(): BelongsTo
     {
         return $this->belongsTo(Payment::class);
+    }
+
+    /**
+     * @return BelongsTo<BudgetProposal, $this>
+     */
+    public function budgetProposal(): BelongsTo
+    {
+        return $this->belongsTo(BudgetProposal::class);
     }
 
     /**

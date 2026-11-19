@@ -2,11 +2,14 @@
 
 namespace App\Actions\Cash;
 
+use App\Enums\BudgetAction;
+use App\Enums\BudgetStatus;
 use App\Enums\CashDirection;
 use App\Enums\CashTransactionType;
 use App\Enums\PaymentMethod;
 use App\Enums\TransactionCategoryType;
 use App\Models\ActivityLog;
+use App\Models\BudgetProposal;
 use App\Models\CashAccount;
 use App\Models\CashTransaction;
 use App\Models\DocumentSequence;
@@ -50,7 +53,8 @@ class CashLedger
     }
 
     /**
-     * Record money spent from an account.
+     * Record money spent from an account, optionally as realization of an approved budget.
+     * Spending against a budget may not exceed what is left of it.
      */
     public function recordExpense(
         CashAccount $account,
@@ -60,14 +64,45 @@ class CashLedger
         string $description,
         ?string $counterparty = null,
         ?UploadedFile $proof = null,
+        ?BudgetProposal $budget = null,
     ): CashTransaction {
         $this->ensureCategoryType($category, TransactionCategoryType::Expense);
 
-        return $this->record($account, CashTransactionType::Expense, CashDirection::Out, $amount, $transactedOn, $description, [
-            'counterparty' => $counterparty,
-            'transaction_category_id' => $category->id,
-            'proof_path' => $proof?->store('cash-proofs', 'local'),
-        ]);
+        return DB::transaction(function () use ($account, $category, $amount, $transactedOn, $description, $counterparty, $proof, $budget): CashTransaction {
+            if ($budget !== null) {
+                $budget = BudgetProposal::query()->lockForUpdate()->findOrFail($budget->id);
+
+                if (! $budget->status->acceptsExpenses() || $budget->level_id !== $account->level_id) {
+                    throw ValidationException::withMessages(['budgetId' => 'Anggaran harus sudah disetujui dan berasal dari jenjang yang sama.']);
+                }
+
+                if ($amount > $budget->remainingAmount()) {
+                    throw ValidationException::withMessages([
+                        'amount' => 'Melebihi sisa anggaran '.$budget->number.' ('.Number::rupiah($budget->remainingAmount()).').',
+                    ]);
+                }
+            }
+
+            $expense = $this->record($account, CashTransactionType::Expense, CashDirection::Out, $amount, $transactedOn, $description, [
+                'counterparty' => $counterparty,
+                'transaction_category_id' => $category->id,
+                'budget_proposal_id' => $budget?->id,
+                'proof_path' => $proof?->store('cash-proofs', 'local'),
+            ]);
+
+            if ($budget?->status === BudgetStatus::Approved) {
+                $budget->update(['status' => BudgetStatus::Disbursing]);
+                $budget->approvals()->create([
+                    'user_id' => Auth::id(),
+                    'role' => Auth::user()?->role,
+                    'action' => BudgetAction::DisbursementStarted,
+                    'notes' => 'Pengeluaran pertama '.$expense->number,
+                    'total_amount' => $budget->total_amount,
+                ]);
+            }
+
+            return $expense;
+        });
     }
 
     /**
@@ -157,6 +192,7 @@ class CashLedger
                     'reversal_of_id' => $leg->id,
                     'transaction_category_id' => $leg->transaction_category_id,
                     'payment_id' => $leg->payment_id,
+                    'budget_proposal_id' => $leg->budget_proposal_id,
                 ], log: false, errorKey: 'cancellationReason');
 
                 $leg->update(['cancelled_at' => now(), 'cancelled_by' => $actor->id, 'cancellation_reason' => $reason]);

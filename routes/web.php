@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\ActiveLevelController;
+use App\Http\Controllers\BudgetAttachmentController;
 use App\Http\Controllers\CashTransactionProofController;
 use App\Http\Controllers\PaymentChannelQrisController;
 use App\Http\Controllers\PaymentProofController;
@@ -36,10 +37,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('pengeluaran', 'pages::finance.expenses')->name('finance.expenses');
             Route::livewire('kas', 'pages::finance.cash')->name('finance.cash');
             Route::get('kas/{cashTransaction}/bukti', CashTransactionProofController::class)->name('finance.proof');
+            Route::livewire('anggaran', 'pages::budgets.index')->name('budgets.index');
+            Route::livewire('anggaran/{budgetProposal}', 'pages::budgets.show')->whereNumber('budgetProposal')->name('budgets.show');
+            Route::get('anggaran/{budgetProposal}/lampiran/{attachment}', BudgetAttachmentController::class)->name('budgets.attachment');
         });
 
         Route::middleware('role:bendahara')->group(function () {
             Route::livewire('tagihan/terbitkan', 'pages::billing.issue')->name('billing.issue');
+            Route::livewire('anggaran/buat', 'pages::budgets.form')->name('budgets.create');
+            Route::livewire('anggaran/{budgetProposal}/ubah', 'pages::budgets.form')->name('budgets.edit');
         });
 
         Route::middleware('role:wali_murid')->prefix('wali')->group(function () {
