@@ -3,9 +3,12 @@
 namespace App\Providers;
 
 use App\Actions\Fortify\ResetUserPassword;
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Models\User;
 use Illuminate\Auth\Middleware\RequirePassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -27,10 +30,26 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->configureAuthentication();
         $this->configureActions();
         $this->configureViews();
         $this->configureRateLimiting();
         $this->configurePasswordConfirmation();
+    }
+
+    /**
+     * Let users log in with their username, email address or phone number.
+     * Deactivated accounts cannot log in.
+     */
+    private function configureAuthentication(): void
+    {
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            $user = User::findForLogin((string) $request->input(Fortify::username()));
+
+            return $user !== null && Hash::check((string) $request->input('password'), $user->password)
+                ? $user
+                : null;
+        });
     }
 
     /**
@@ -40,6 +59,7 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Livewire::addPersistentMiddleware([
             RequirePassword::class,
+            EnsureUserHasRole::class,
         ]);
     }
 

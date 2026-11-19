@@ -44,7 +44,7 @@
             </div>
             <div class="grid flex-1 text-sm leading-tight">
                 <span class="truncate font-medium">{{ $user->name }}</span>
-                <span class="truncate text-base-content/60">{{ $user->email }}</span>
+                <span class="truncate text-base-content/60">{{ $user->role->label() }} · {{ $user->email ?? $user->phone ?? $user->username }}</span>
             </div>
         </div>
 
@@ -54,13 +54,13 @@
             <li>
                 <a href="{{ route('profile.edit') }}" wire:navigate>
                     <x-icon name="cog" class="size-4" />
-                    {{ __('Settings') }}
+                    Pengaturan Akun
                 </a>
             </li>
             <li>
                 <button type="submit" form="{{ $logoutFormId }}" data-test="logout-button">
                     <x-icon name="arrow-right-start-on-rectangle" class="size-4" />
-                    {{ __('Log out') }}
+                    Keluar
                 </button>
             </li>
         </ul>

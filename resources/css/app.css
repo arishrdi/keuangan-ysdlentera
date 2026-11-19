@@ -3,6 +3,27 @@
     themes: light --default, dark --prefersdark;
 }
 
+/* Lentera brand: green primary and yellow accent, taken from the foundation logo. */
+@plugin "daisyui/theme" {
+    name: "light";
+    default: true;
+    --color-primary: oklch(62% 0.17 150);
+    --color-primary-content: oklch(99% 0.01 150);
+    --color-accent: oklch(91% 0.19 102);
+    --color-accent-content: oklch(28% 0.06 102);
+    --color-neutral: oklch(32% 0.02 150);
+    --color-neutral-content: oklch(98% 0.005 150);
+}
+
+@plugin "daisyui/theme" {
+    name: "dark";
+    prefersdark: true;
+    --color-primary: oklch(68% 0.17 150);
+    --color-primary-content: oklch(18% 0.04 150);
+    --color-accent: oklch(88% 0.18 102);
+    --color-accent-content: oklch(25% 0.06 102);
+}
+
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 

@@ -20,7 +20,7 @@ new #[Title('Profile settings')] class extends Component {
     public function mount(): void
     {
         $this->name = Auth::user()->name;
-        $this->email = Auth::user()->email;
+        $this->email = (string) Auth::user()->email;
     }
 
     /**
@@ -36,7 +36,7 @@ new #[Title('Profile settings')] class extends Component {
 
         $validated = $this->validate($this->profileRules($user->id));
 
-        $user->fill($validated);
+        $user->fill([...$validated, 'email' => $validated['email'] ?: null]);
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

@@ -2,9 +2,6 @@
     'sidebar' => false,
 ])
 
-<a {{ $attributes->class(['flex items-center gap-2 font-semibold', 'px-2' => $sidebar]) }}>
-    <span class="flex aspect-square size-8 items-center justify-center rounded-field bg-neutral text-neutral-content">
-        <x-app-logo-icon class="size-5 fill-current" />
-    </span>
-    <span class="truncate text-sm">{{ config('app.name', 'Laravel') }}</span>
+<a {{ $attributes->class(['flex items-center gap-2', 'px-2' => $sidebar]) }}>
+    <img src="{{ asset('images/logo.png') }}" alt="{{ config('app.name') }}" class="h-9 w-auto rounded-field" />
 </a>
