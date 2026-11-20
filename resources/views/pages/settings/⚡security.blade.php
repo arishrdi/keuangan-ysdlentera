@@ -95,7 +95,9 @@ new #[Title('Security settings')] class extends Component {
             </div>
         </form>
 
-
+        @if (\Laravel\Fortify\Features::canManageTwoFactorAuthentication() && auth()->user()->isStaff())
+            <livewire:pages::settings.two-factor />
+        @endif
     </x-pages::settings.layout>
 
 </section>

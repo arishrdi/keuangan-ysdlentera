@@ -63,6 +63,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::middleware('role:admin')->prefix('admin')->group(function () {
             Route::livewire('pengguna', 'pages::admin.users')->name('admin.users');
+            Route::livewire('jenjang', 'pages::admin.levels')->name('admin.levels');
+            Route::livewire('import-siswa', 'pages::admin.student-import')->name('admin.student-import');
             Route::livewire('tahun-ajaran', 'pages::admin.academic-years')->name('admin.academic-years');
             Route::livewire('kelas', 'pages::admin.classrooms')->name('admin.classrooms');
             Route::livewire('wali-murid', 'pages::admin.guardians')->name('admin.guardians');

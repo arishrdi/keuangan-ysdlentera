@@ -37,7 +37,8 @@ test('security settings page renders without two factor when feature is disabled
         ->assertSee('Ubah password')
         ->assertDontSee('Manage your passkeys for passwordless sign-in')
         ->assertDontSee('Add a passkey to sign in without a password')
-        ->assertDontSee('Two-factor authentication');
+        ->assertDontSee('Two-factor authentication')
+        ->assertDontSee('Verifikasi dua langkah');
 });
 
 test('password can be updated', function () {

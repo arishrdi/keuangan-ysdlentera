@@ -34,6 +34,7 @@
             'title' => 'Data Master',
             'items' => [
                 ['label' => 'Data Siswa', 'route' => 'students.index', 'icon' => 'academic-cap', 'active' => 'students.*', 'roles' => [Role::Admin]],
+                ['label' => 'Import Siswa', 'route' => 'admin.student-import', 'icon' => 'arrow-up-tray', 'active' => 'admin.student-import', 'roles' => [Role::Admin]],
                 ['label' => 'Wali Murid', 'route' => 'admin.guardians', 'icon' => 'user-group', 'active' => 'admin.guardians', 'roles' => [Role::Admin]],
                 ['label' => 'Kelas', 'route' => 'admin.classrooms', 'icon' => 'rectangle-group', 'active' => 'admin.classrooms', 'roles' => [Role::Admin]],
                 ['label' => 'Kenaikan Kelas', 'route' => 'admin.promotions', 'icon' => 'arrow-trending-up', 'active' => 'admin.promotions', 'roles' => [Role::Admin]],
@@ -53,6 +54,7 @@
         [
             'title' => 'Sistem',
             'items' => [
+                ['label' => 'Profil Jenjang', 'route' => 'admin.levels', 'icon' => 'building-office', 'active' => 'admin.levels', 'roles' => [Role::Admin]],
                 ['label' => 'Data Pengguna', 'route' => 'admin.users', 'icon' => 'identification', 'active' => 'admin.users', 'roles' => [Role::Admin]],
                 ['label' => 'Riwayat Aktivitas', 'route' => 'activity-logs.index', 'icon' => 'clock', 'active' => 'activity-logs.*', 'roles' => [Role::Admin, Role::Foundation]],
             ],
