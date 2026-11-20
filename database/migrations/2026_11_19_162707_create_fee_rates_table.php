@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedBigInteger('amount');
             $table->timestamps();
 
-            $table->unique(['level_id', 'payment_category_id', 'academic_year_id', 'grade']);
+            $table->unique(['level_id', 'payment_category_id', 'academic_year_id', 'grade'], 'fee_rates_scope_unique');
         });
     }
 
