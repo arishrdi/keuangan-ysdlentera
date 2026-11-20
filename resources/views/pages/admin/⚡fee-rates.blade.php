@@ -299,9 +299,9 @@ new #[Title('Kategori & Tarif')] class extends Component {
                                 <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $feeRate->id }})" aria-label="Ubah">
                                     <x-icon name="pencil-square" class="size-4" />
                                 </button>
-                                <button type="button" class="btn btn-sm btn-ghost btn-square text-error" wire:click="delete({{ $feeRate->id }})" wire:confirm="Hapus tarif ini? Tagihan yang sudah terbit tidak berubah." aria-label="Hapus">
+                                <x-confirm-button :action="'delete('.$feeRate->id.')'" title="Hapus tarif" message="Hapus tarif ini? Tagihan yang sudah terbit tidak berubah." confirm-label="Hapus" danger class="btn btn-sm btn-ghost btn-square text-error" aria-label="Hapus">
                                     <x-icon name="trash" class="size-4" />
-                                </button>
+                                </x-confirm-button>
                             </div>
                         </td>
                     </tr>
@@ -326,7 +326,7 @@ new #[Title('Kategori & Tarif')] class extends Component {
                     @endforeach
                 </x-select>
                 <x-input wire:model="grade" label="Tingkat (kosongkan untuk semua)" type="number" min="0" max="12" />
-                <x-input wire:model="amount" label="Nominal (Rp)" type="number" min="1000" step="500" required />
+                <x-money-input wire:model="amount" label="Nominal" required />
             </div>
 
             <div class="modal-action">

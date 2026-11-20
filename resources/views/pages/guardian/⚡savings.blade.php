@@ -23,7 +23,7 @@ new #[Title('Tabungan Anak')] class extends Component {
     #[Computed]
     public function children(): Collection
     {
-        return auth()->user()->students()->with('level')->withSavingsBalance()->orderBy('name')->get();
+        return auth()->user()->students()->with(['level', 'currentEnrollment.classroom'])->withSavingsBalance()->orderBy('name')->get();
     }
 
     #[Computed]
@@ -55,42 +55,47 @@ new #[Title('Tabungan Anak')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Tabungan" description="Saldo dan riwayat tabungan anak. Setoran dan penarikan dilakukan di bendahara sekolah." />
+    <x-guardian.band title="Tabungan" description="Setoran dan penarikan dilakukan di bendahara sekolah.">
+        @if ($this->children->count() > 1)
+            <x-guardian.child-pills :children="$this->children" :active="$studentId" />
+        @endif
+    </x-guardian.band>
 
-    @if ($this->children->isEmpty())
-        <div class="rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">Belum ada siswa yang terhubung dengan akun Anda.</div>
-    @else
-        <div class="mb-4 grid gap-3 sm:grid-cols-2">
+    <x-guardian.overlap>
+        @if ($this->children->isEmpty())
+            <div class="panel p-6 text-sm text-base-content/70 shadow-sm">Belum ada siswa yang terhubung dengan akun Anda.</div>
+        @else
             @foreach ($this->children as $child)
-                <button
-                    type="button"
-                    wire:key="child-{{ $child->id }}"
-                    wire:click="$set('studentId', {{ $child->id }})"
-                    @class(['card border text-start', 'border-primary bg-primary/5' => $child->id === $studentId, 'border-base-300' => $child->id !== $studentId])
-                >
-                    <div class="card-body gap-1 p-4">
-                        <div class="text-sm text-base-content/70">{{ $child->name }} · {{ $child->level->name }}</div>
-                        <div class="text-2xl font-semibold">{{ \Illuminate\Support\Number::rupiah((int) $child->savings_balance) }}</div>
-                    </div>
-                </button>
+                @if ($child->id === $studentId)
+                    <section class="panel p-5 shadow-sm" wire:key="child-{{ $child->id }}" aria-label="Saldo tabungan {{ $child->name }}">
+                        <p class="text-sm text-base-content/70">Saldo tabungan</p>
+                        <p class="mt-1 text-4xl font-bold tracking-tight text-primary">{{ \Illuminate\Support\Number::rupiah((int) $child->savings_balance) }}</p>
+                        <p class="mt-2 text-sm text-base-content/65">{{ $child->name }}, {{ $child->level->name }}</p>
+                    </section>
+                @endif
             @endforeach
-        </div>
 
-        <h2 class="mb-2 font-semibold">Riwayat {{ $this->student?->name }}</h2>
-        <ul class="divide-y divide-base-300 rounded-box border border-base-300">
-            @forelse ($this->transactions as $transaction)
-                <li class="flex items-center justify-between gap-3 p-3" wire:key="savings-{{ $transaction->id }}">
-                    <div>
-                        <div class="font-medium">{{ $transaction->type->label() }}</div>
-                        <div class="text-xs text-base-content/60">{{ $transaction->transacted_on->translatedFormat('j M Y') }}{{ $transaction->notes ? ' · '.$transaction->notes : '' }}</div>
-                    </div>
-                    <div @class(['font-mono', 'text-success' => $transaction->direction === \App\Enums\CashDirection::In, 'text-error' => $transaction->direction === \App\Enums\CashDirection::Out])>
-                        {{ $transaction->direction === \App\Enums\CashDirection::In ? '+' : '−' }}{{ \Illuminate\Support\Number::rupiah($transaction->amount) }}
-                    </div>
-                </li>
-            @empty
-                <li class="p-6 text-center text-sm text-base-content/60">Belum ada transaksi tabungan.</li>
-            @endforelse
-        </ul>
-    @endif
+            <section class="panel px-5 py-2" aria-labelledby="savings-history">
+                <h2 id="savings-history" class="pb-1 pt-3 text-sm font-semibold">Riwayat</h2>
+                <ul class="divide-y divide-base-300">
+                    @forelse ($this->transactions as $transaction)
+                        <li class="flex items-center gap-3 py-3" wire:key="savings-{{ $transaction->id }}">
+                            <x-guardian.date-tile :date="$transaction->transacted_on" />
+                            <div class="min-w-0 flex-1">
+                                <p class="font-semibold">{{ $transaction->type->label() }}</p>
+                                @if ($transaction->notes)
+                                    <p class="truncate text-xs text-base-content/60">{{ $transaction->notes }}</p>
+                                @endif
+                            </div>
+                            <p @class(['shrink-0 font-bold', 'text-success' => $transaction->direction === \App\Enums\CashDirection::In, 'text-error' => $transaction->direction === \App\Enums\CashDirection::Out])>
+                                {{ $transaction->direction === \App\Enums\CashDirection::In ? '+' : '−' }}{{ \Illuminate\Support\Number::rupiah($transaction->amount) }}
+                            </p>
+                        </li>
+                    @empty
+                        <li class="py-6 text-center text-sm text-base-content/60">Belum ada transaksi tabungan.</li>
+                    @endforelse
+                </ul>
+            </section>
+        @endif
+    </x-guardian.overlap>
 </div>

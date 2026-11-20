@@ -28,35 +28,69 @@ new #[Title('Riwayat Pembayaran')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Riwayat Pembayaran" description="Semua pembayaran yang pernah dikirim beserta status dan kuitansinya." />
+    @php
+        $latestReceipt = $this->payments->onFirstPage()
+            ? $this->payments->getCollection()->first(fn ($payment) => $payment->hasReceipt() && $payment->status === \App\Enums\PaymentStatus::Verified)
+            : null;
+    @endphp
 
-    <div class="space-y-3">
-        @forelse ($this->payments as $payment)
-            <div class="card border border-base-300" wire:key="payment-{{ $payment->id }}">
-                <div class="card-body gap-1 p-4">
-                    <div class="flex flex-wrap items-center justify-between gap-2">
-                        <div class="font-semibold">{{ \Illuminate\Support\Number::rupiah($payment->amount) }}</div>
-                        <span class="badge badge-sm {{ $payment->status->badgeClass() }}">{{ $payment->status->label() }}</span>
-                    </div>
-                    <div class="text-sm text-base-content/70">
-                        {{ $payment->student->name }} · {{ $payment->paid_on->translatedFormat('j M Y') }} · {{ $payment->method->label() }}{{ $payment->channel ? ' ('.$payment->channel->name.')' : '' }}
-                    </div>
-                    <div class="text-sm">{{ $payment->allocations->map(fn ($allocation) => $allocation->bill->description)->join(', ') }}</div>
-                    @if ($payment->rejection_reason)
-                        <div class="text-sm text-error">Ditolak: {{ $payment->rejection_reason }}. Silakan kirim ulang bukti yang benar.</div>
-                    @endif
-                    @if ($payment->hasReceipt())
-                        <div class="mt-1 flex flex-wrap items-center gap-2">
-                            <span class="font-mono text-xs text-base-content/60">{{ $payment->receipt_number }}</span>
-                            <a href="{{ route('payments.receipt', $payment) }}" target="_blank" class="btn btn-xs btn-outline btn-primary">Lihat / unduh kuitansi</a>
+    <x-guardian.band title="Riwayat Pembayaran" description="Semua pembayaran yang pernah dikirim beserta status dan kuitansinya." />
+
+    <x-guardian.overlap>
+        @if ($latestReceipt)
+            <section class="panel p-5 text-center shadow-sm" aria-labelledby="latest-receipt">
+                <span class="mx-auto flex size-14 items-center justify-center rounded-full bg-primary text-primary-content">
+                    <x-icon name="check" class="size-7" />
+                </span>
+                <h2 id="latest-receipt" class="mt-3 text-lg font-bold text-primary">Pembayaran terakhir terverifikasi</h2>
+                <p class="text-sm text-base-content/65">{{ $latestReceipt->student->name }}, {{ $latestReceipt->paid_on->translatedFormat('j M Y') }}</p>
+
+                <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 rounded-box border border-dashed border-base-300 p-4 text-start text-sm">
+                    <dt class="text-base-content/65">No. kuitansi</dt>
+                    <dd class="text-end font-mono font-semibold">{{ $latestReceipt->receipt_number }}</dd>
+                    <dt class="text-base-content/65">Metode</dt>
+                    <dd class="text-end font-semibold">{{ $latestReceipt->method->label() }}{{ $latestReceipt->channel ? ' ('.$latestReceipt->channel->name.')' : '' }}</dd>
+                    <dt class="text-base-content/65">Jumlah</dt>
+                    <dd class="text-end font-semibold">{{ \Illuminate\Support\Number::rupiah($latestReceipt->amount) }}</dd>
+                </dl>
+
+                <a href="{{ route('payments.receipt', $latestReceipt) }}" target="_blank" class="btn btn-outline btn-primary btn-block mt-4">Unduh kuitansi (PDF)</a>
+            </section>
+        @endif
+
+        <section class="panel px-5 py-2" aria-label="Daftar pembayaran">
+            <ul class="divide-y divide-base-300">
+                @forelse ($this->payments as $payment)
+                    <li class="flex gap-3 py-4" wire:key="payment-{{ $payment->id }}">
+                        <x-guardian.date-tile :date="$payment->paid_on" />
+
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-start justify-between gap-3">
+                                <p class="font-semibold">{{ $payment->allocations->map(fn ($allocation) => $allocation->bill->description)->join(', ') }}</p>
+                                <p class="shrink-0 font-bold">{{ \Illuminate\Support\Number::rupiah($payment->amount) }}</p>
+                            </div>
+                            <div class="mt-1 flex items-center justify-between gap-3">
+                                <p class="min-w-0 text-xs text-base-content/60">
+                                    {{ $payment->student->name }}, {{ $payment->method->label() }}{{ $payment->channel ? ' ('.$payment->channel->name.')' : '' }}
+                                </p>
+                                <span class="badge badge-soft badge-sm shrink-0 font-semibold {{ $payment->status->badgeClass() }}">{{ $payment->status->label() }}</span>
+                            </div>
+
+                            @if ($payment->rejection_reason)
+                                <p class="mt-2 rounded-field bg-error/10 px-3 py-2 text-sm text-error">Ditolak: {{ $payment->rejection_reason }}. Silakan kirim ulang bukti yang benar.</p>
+                            @endif
+
+                            @if ($payment->hasReceipt())
+                                <a href="{{ route('payments.receipt', $payment) }}" target="_blank" class="link link-hover mt-1 inline-block text-sm font-medium text-primary">Kuitansi {{ $payment->receipt_number }}</a>
+                            @endif
                         </div>
-                    @endif
-                </div>
-            </div>
-        @empty
-            <div class="rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">Belum ada pembayaran.</div>
-        @endforelse
-    </div>
+                    </li>
+                @empty
+                    <li class="py-6 text-center text-sm text-base-content/60">Belum ada pembayaran.</li>
+                @endforelse
+            </ul>
+        </section>
 
-    <div class="mt-4">{{ $this->payments->links() }}</div>
+        <div>{{ $this->payments->links() }}</div>
+    </x-guardian.overlap>
 </div>

@@ -210,7 +210,7 @@ new #[Title('Kas')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Kas" :description="($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang').' · Saldo dan mutasi setiap akun kas.'">
+    <x-page-header title="Kas" :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang')]" description="Saldo dan mutasi setiap akun kas.">
         <x-slot:actions>
             @if ($this->canManage)
                 <button type="button" class="btn btn-outline btn-primary" wire:click="openTransfer">Transfer antar akun</button>
@@ -239,7 +239,12 @@ new #[Title('Kas')] class extends Component {
                         <span class="badge badge-outline badge-xs">{{ $account->level->code }}</span>
                     </div>
                     <div @class(['text-xl font-semibold', 'text-error' => $account->balance < 0])>{{ \Illuminate\Support\Number::rupiah($account->balance) }}</div>
-                    <div class="text-xs text-base-content/60">{{ $account->type->label() }}{{ $account->is_active ? '' : ' · nonaktif' }}</div>
+                    <div class="flex items-center gap-1.5 text-xs text-base-content/60">
+                        {{ $account->type->label() }}
+                        @unless ($account->is_active)
+                            <span class="badge badge-ghost badge-xs">nonaktif</span>
+                        @endunless
+                    </div>
                     @if ($this->canManage && (int) $account->balance === 0)
                         <span class="link link-primary text-xs" wire:click.stop="openOpening({{ $account->id }})">Isi saldo awal</span>
                     @endif
@@ -306,7 +311,7 @@ new #[Title('Kas')] class extends Component {
                             <option value="{{ $account->id }}" wire:key="to-{{ $account->id }}">{{ $account->name }}</option>
                         @endforeach
                     </x-select>
-                    <x-input wire:model="transferAmount" label="Nominal (Rp)" type="number" min="1" required />
+                    <x-money-input wire:model="transferAmount" label="Nominal" required />
                     <x-input wire:model="transferDate" label="Tanggal" type="date" required />
                 </div>
                 <x-input wire:model="transferNote" label="Keterangan" required />
@@ -320,7 +325,7 @@ new #[Title('Kas')] class extends Component {
         <x-modal name="opening-balance" title="Saldo awal akun">
             <form wire:submit="recordOpening" class="space-y-4">
                 <p class="text-sm text-base-content/70">Isi saldo yang sudah ada sebelum sistem dipakai. Saldo awal hanya bisa dicatat sekali per akun.</p>
-                <x-input wire:model="openingAmount" label="Saldo awal (Rp)" type="number" min="1" required />
+                <x-money-input wire:model="openingAmount" label="Saldo awal" required />
                 <x-input wire:model="openingDate" label="Per tanggal" type="date" required />
                 <div class="modal-action">
                     <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Batal</button>

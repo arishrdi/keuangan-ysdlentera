@@ -140,7 +140,7 @@ new #[Title('Pembayaran')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Pembayaran" :description="($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang').' · Verifikasi bukti transfer dan pantau pembayaran masuk.'" />
+    <x-page-header title="Pembayaran" :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang')]" description="Verifikasi bukti transfer dan pantau pembayaran masuk." />
 
     <div role="tablist" class="tabs tabs-box mb-4 w-fit">
         <button type="button" role="tab" @class(['tab', 'tab-active' => $status === '']) wire:click="$set('status', '')">Semua</button>
@@ -185,7 +185,12 @@ new #[Title('Pembayaran')] class extends Component {
                             <span class="badge badge-outline badge-xs">{{ $payment->level->code }}</span>
                         </td>
                         <td class="font-mono text-xs">{{ $payment->receipt_number ?? '-' }}</td>
-                        <td>{{ $payment->method->label() }}{{ $payment->channel ? ' · '.$payment->channel->name : '' }}</td>
+                        <td>
+                            {{ $payment->method->label() }}
+                            @if ($payment->channel)
+                                <div class="text-xs text-base-content/60">{{ $payment->channel->name }}</div>
+                            @endif
+                        </td>
                         <td class="text-end font-mono">{{ \Illuminate\Support\Number::rupiah($payment->amount) }}</td>
                         <td><span class="badge badge-sm {{ $payment->status->badgeClass() }}">{{ $payment->status->label() }}</span></td>
                         <td class="text-end">
@@ -212,10 +217,10 @@ new #[Title('Pembayaran')] class extends Component {
                     <dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
                         <dt class="text-base-content/60">Siswa</dt><dd>{{ $payment->student->name }} ({{ $payment->level->name }})</dd>
                         <dt class="text-base-content/60">Tanggal bayar</dt><dd>{{ $payment->paid_on->translatedFormat('j F Y') }}</dd>
-                        <dt class="text-base-content/60">Metode</dt><dd>{{ $payment->method->label() }}{{ $payment->channel ? ' · '.$payment->channel->name : '' }}</dd>
-                        <dt class="text-base-content/60">Dicatat oleh</dt><dd>{{ $payment->submitter?->name ?? '-' }} · {{ $payment->created_at->translatedFormat('j M Y H:i') }}</dd>
+                        <dt class="text-base-content/60">Metode</dt><dd>{{ $payment->method->label() }}{{ $payment->channel ? ' ('.$payment->channel->name.')' : '' }}</dd>
+                        <dt class="text-base-content/60">Dicatat oleh</dt><dd>{{ $payment->submitter?->name ?? '-' }} <span class="text-base-content/60">pada {{ $payment->created_at->translatedFormat('j M Y H:i') }}</span></dd>
                         @if ($payment->verifier)
-                            <dt class="text-base-content/60">Diperiksa oleh</dt><dd>{{ $payment->verifier->name }} · {{ $payment->verified_at?->translatedFormat('j M Y H:i') }}</dd>
+                            <dt class="text-base-content/60">Diperiksa oleh</dt><dd>{{ $payment->verifier->name }} <span class="text-base-content/60">pada {{ $payment->verified_at?->translatedFormat('j M Y H:i') }}</span></dd>
                         @endif
                         @if ($payment->notes)
                             <dt class="text-base-content/60">Catatan</dt><dd>{{ $payment->notes }}</dd>
@@ -271,7 +276,7 @@ new #[Title('Pembayaran')] class extends Component {
                 <div class="mt-6 grid gap-3 border-t border-base-300 pt-4 md:grid-cols-[1fr_auto_auto] md:items-end">
                     <x-input wire:model="rejectionReason" label="Alasan penolakan (wajib bila ditolak)" placeholder="contoh: Dana belum masuk ke rekening" />
                     <button type="button" class="btn btn-error btn-outline" wire:click="reject">Tolak</button>
-                    <button type="button" class="btn btn-primary" wire:click="verify" wire:confirm="Pastikan dana sudah masuk ke rekening. Verifikasi pembayaran ini?">Verifikasi</button>
+                    <x-confirm-button action="verify()" title="Verifikasi pembayaran" message="Pastikan dana sudah masuk ke rekening. Kuitansi akan terbit dan tagihan ditandai terbayar." confirm-label="Verifikasi" class="btn btn-primary">Verifikasi</x-confirm-button>
                 </div>
             @elseif ($this->canManage && $payment->status === \App\Enums\PaymentStatus::Verified)
                 <details class="collapse-arrow collapse mt-6 border border-base-300">
@@ -279,7 +284,7 @@ new #[Title('Pembayaran')] class extends Component {
                     <div class="collapse-content space-y-3">
                         <p class="text-sm text-base-content/70">Gunakan hanya bila pembayaran salah catat. Kuitansi akan ditandai BATAL dan tagihan kembali belum lunas.</p>
                         <x-input wire:model="cancellationReason" label="Alasan pembatalan" />
-                        <button type="button" class="btn btn-error btn-sm" wire:click="cancel" wire:confirm="Batalkan pembayaran ini?">Batalkan pembayaran</button>
+                        <x-confirm-button action="cancel()" title="Batalkan pembayaran" message="Kuitansi akan ditandai batal dan tagihan kembali belum lunas." confirm-label="Batalkan pembayaran" danger class="btn btn-error btn-sm">Batalkan pembayaran</x-confirm-button>
                     </div>
                 </details>
             @endif

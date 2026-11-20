@@ -3,7 +3,6 @@
         <ul class="menu w-full p-0">
             <li><a href="{{ route('profile.edit') }}" @class(['menu-active' => request()->routeIs('profile.edit')]) wire:navigate>{{ __('Profile') }}</a></li>
             <li><a href="{{ route('security.edit') }}" @class(['menu-active' => request()->routeIs('security.edit')]) wire:navigate>{{ __('Security') }}</a></li>
-            <li><a href="{{ route('appearance.edit') }}" @class(['menu-active' => request()->routeIs('appearance.edit')]) wire:navigate>{{ __('Appearance') }}</a></li>
         </ul>
     </nav>
 

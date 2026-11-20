@@ -157,7 +157,7 @@ new class extends Component {
         </x-slot:actions>
     </x-page-header>
 
-    <div class="mb-4 flex flex-wrap items-end gap-3 rounded-box border border-base-300 p-3">
+    <div class="mb-4 flex flex-wrap items-end gap-3 rounded-box border border-base-300 bg-base-100 p-3">
         @if ($this->supports('period'))
             <label class="fieldset p-0">
                 <span class="fieldset-legend pt-0 text-xs">Dari</span>
@@ -200,7 +200,7 @@ new class extends Component {
                 <select class="select select-sm w-40" wire:model.live="classroomId">
                     <option value="">Semua kelas</option>
                     @foreach ($this->classrooms as $classroom)
-                        <option value="{{ $classroom->id }}" wire:key="classroom-{{ $classroom->id }}">{{ $classroom->level->code }} · {{ $classroom->name }}</option>
+                        <option value="{{ $classroom->id }}" wire:key="classroom-{{ $classroom->id }}">{{ $classroom->name }} ({{ $classroom->level->code }})</option>
                     @endforeach
                 </select>
             </label>

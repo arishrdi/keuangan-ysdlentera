@@ -195,7 +195,7 @@ new class extends Component {
 
     <x-page-header
         :title="$this->proposal ? 'Ubah pengajuan anggaran' : 'Buat pengajuan anggaran'"
-        :description="'Jenjang '.($this->level?->name ?? '-').($this->proposal?->number ? ' · '.$this->proposal->number : '').' · Pengaju: '.auth()->user()->name"
+        :meta="['Jenjang '.($this->level?->name ?? '-'), $this->proposal?->number, 'Pengaju: '.auth()->user()->name]"
     />
 
     @if ($this->level === null)
@@ -258,8 +258,7 @@ new class extends Component {
                                     <td><input type="number" min="1" class="input input-sm w-full @error('items.'.$index.'.quantity') input-error @enderror" wire:model.live.debounce.400ms="items.{{ $index }}.quantity" aria-label="Jumlah baris {{ $index + 1 }}" /></td>
                                     <td><input type="text" class="input input-sm w-full @error('items.'.$index.'.unit') input-error @enderror" wire:model.blur="items.{{ $index }}.unit" aria-label="Satuan baris {{ $index + 1 }}" /></td>
                                     <td>
-                                        <input type="number" min="1" class="input input-sm w-full @error('items.'.$index.'.unit_price') input-error @enderror" wire:model.live.debounce.400ms="items.{{ $index }}.unit_price" aria-label="Harga satuan baris {{ $index + 1 }}" />
-                                        @error('items.'.$index.'.unit_price') <p class="text-xs text-error">{{ $message }}</p> @enderror
+                                        <x-money-input wire:model.live.debounce.400ms="items.{{ $index }}.unit_price" size="sm" class="min-w-36" aria-label="Harga satuan baris {{ $index + 1 }}" />
                                     </td>
                                     <td class="text-end font-mono">{{ \Illuminate\Support\Number::rupiah($this->itemSubtotal($index)) }}</td>
                                     <td>
@@ -272,7 +271,7 @@ new class extends Component {
                                 </tr>
                             @endforeach
                             <tr class="text-base font-semibold">
-                                <td colspan="4" class="text-end">TOTAL</td>
+                                <td colspan="4" class="text-end">Total</td>
                                 <td class="text-end font-mono">{{ \Illuminate\Support\Number::rupiah($this->total) }}</td>
                                 <td></td>
                             </tr>
@@ -288,11 +287,11 @@ new class extends Component {
                 <x-textarea wire:model="reason" label="Alasan pengajuan (tujuan dan kebutuhan)" rows="4" required />
 
                 <fieldset class="fieldset p-0">
-                    <legend class="fieldset-legend pt-0">Lampiran RAB & dokumen pendukung (PDF, gambar, Excel, Word · maks. 5 MB per file)</legend>
+                    <legend class="fieldset-legend pt-0">Lampiran RAB & dokumen pendukung (PDF, gambar, Excel, atau Word, maks. 5 MB per file)</legend>
                     @if ($this->proposal)
                         <ul class="mb-2 space-y-1">
                             @foreach ($this->proposal->attachments->whereNotIn('id', $removedAttachmentIds) as $attachment)
-                                <li class="flex items-center justify-between rounded-box border border-base-300 px-3 py-2 text-sm" wire:key="attachment-{{ $attachment->id }}">
+                                <li class="flex items-center justify-between rounded-box border border-base-300 bg-base-100 px-3 py-2 text-sm" wire:key="attachment-{{ $attachment->id }}">
                                     <a href="{{ route('budgets.attachment', [$this->proposal, $attachment]) }}" class="link">{{ $attachment->original_name }}</a>
                                     <button type="button" class="btn btn-ghost btn-xs text-error" wire:click="removeAttachment({{ $attachment->id }})">Hapus</button>
                                 </li>
@@ -315,9 +314,9 @@ new class extends Component {
             </div>
             <div class="flex gap-2">
                 <button type="submit" class="btn" wire:loading.attr="disabled">Simpan draft</button>
-                <button type="button" class="btn btn-primary" wire:click="submit" wire:loading.attr="disabled" wire:confirm="Kirim pengajuan ke Kepala Sekolah? Setelah dikirim, pengajuan tidak bisa diubah kecuali diminta revisi.">
+                <x-confirm-button action="submit()" title="Kirim pengajuan" message="Kirim pengajuan ke Kepala Sekolah? Setelah dikirim, pengajuan tidak bisa diubah kecuali diminta revisi." confirm-label="Kirim" class="btn btn-primary" wire:loading.attr="disabled">
                     Kirim pengajuan
-                </button>
+                </x-confirm-button>
             </div>
         </div>
     </form>

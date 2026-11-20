@@ -110,7 +110,7 @@ new #[Title('Anggaran')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Anggaran" :description="($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang').' · Pengajuan, persetujuan, dan realisasi anggaran.'">
+    <x-page-header title="Anggaran" :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang')]" description="Pengajuan, persetujuan, dan realisasi anggaran.">
         <x-slot:actions>
             @if ($this->canManage)
                 <a href="{{ route('budgets.create') }}" class="btn btn-primary" wire:navigate>

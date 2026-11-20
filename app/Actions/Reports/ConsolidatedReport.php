@@ -52,7 +52,7 @@ class ConsolidatedReport extends Report
 
         return new ReportTable(
             title: static::title(),
-            subtitle: 'Semua jenjang · '.$filters->periodLabel().' · Tagihan tahun ajaran '.($filters->academicYear->name ?? '-'),
+            subtitle: 'Semua jenjang, '.$filters->periodLabel().', tagihan tahun ajaran '.($filters->academicYear->name ?? '-'),
             columns: [
                 self::column('level', 'Jenjang'),
                 self::column('students', 'Siswa aktif', 'number'),

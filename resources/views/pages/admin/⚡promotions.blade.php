@@ -213,7 +213,7 @@ new #[Title('Kenaikan Kelas')] class extends Component {
                         </x-select>
                         <x-select wire:model.live="sourceClassroomId" label="Kelas asal" placeholder="Pilih kelas">
                             @foreach ($this->sourceClassrooms as $classroom)
-                                <option value="{{ $classroom->id }}" wire:key="source-classroom-{{ $classroom->id }}">{{ $classroom->level->code }} · {{ $classroom->name }}</option>
+                                <option value="{{ $classroom->id }}" wire:key="source-classroom-{{ $classroom->id }}">{{ $classroom->name }} ({{ $classroom->level->code }})</option>
                             @endforeach
                         </x-select>
                     </div>
@@ -267,21 +267,23 @@ new #[Title('Kenaikan Kelas')] class extends Component {
                         @if ($mode === 'promote')
                             <x-select wire:model="targetClassroomId" label="Kelas tujuan" placeholder="Pilih kelas tujuan">
                                 @foreach ($this->targetClassrooms as $classroom)
-                                    <option value="{{ $classroom->id }}" wire:key="target-classroom-{{ $classroom->id }}">{{ $classroom->level->code }} · {{ $classroom->name }}</option>
+                                    <option value="{{ $classroom->id }}" wire:key="target-classroom-{{ $classroom->id }}">{{ $classroom->name }} ({{ $classroom->level->code }})</option>
                                 @endforeach
                             </x-select>
                         @else
                             <x-input wire:model="graduatedOn" label="Tanggal lulus" type="date" />
                         @endif
 
-                        <button
-                            type="submit"
+                        <x-confirm-button
+                            action="process()"
+                            title="Proses kenaikan kelas"
+                            :message="'Proses '.count($selectedStudentIds).' siswa terpilih?'"
+                            confirm-label="Proses"
                             class="btn btn-primary w-full"
-                            wire:confirm="Proses {{ count($selectedStudentIds) }} siswa terpilih?"
-                            @disabled($selectedStudentIds === [])
+                            :disabled="$selectedStudentIds === []"
                         >
                             Proses {{ count($selectedStudentIds) }} siswa
-                        </button>
+                        </x-confirm-button>
                     </form>
                 </div>
             </div>

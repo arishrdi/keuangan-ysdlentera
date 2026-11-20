@@ -24,7 +24,7 @@ class PaymentSubmitted extends Notification
     {
         return [
             'title' => 'Bukti pembayaran baru',
-            'message' => $this->payment->student->name.' · Rp'.number_format($this->payment->amount, 0, ',', '.').' menunggu verifikasi.',
+            'message' => 'Pembayaran '.$this->payment->student->name.' sebesar Rp'.number_format($this->payment->amount, 0, ',', '.').' menunggu verifikasi.',
             'url' => route('payments.index', ['status' => 'menunggu']),
         ];
     }

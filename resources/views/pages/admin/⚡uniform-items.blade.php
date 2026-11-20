@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Models\ActivityLog;
 use App\Models\Level;
 use App\Models\UniformItem;
@@ -7,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 new #[Title('Katalog Seragam')] class extends Component {
@@ -109,6 +111,23 @@ new #[Title('Katalog Seragam')] class extends Component {
         $this->dispatch('toast', variant: 'success', text: 'Item seragam disimpan.');
         unset($this->items);
     }
+    public function delete(UniformItem $item, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-payment-settings');
+
+        try {
+            $deleteUnusedRecord->handle($item);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        ActivityLog::record('uniform_item.deleted', 'Menghapus item seragam '.$item->name, properties: ['uniform_item_id' => $item->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Item seragam dihapus.');
+        unset($this->items);
+    }
 }; ?>
 
 <div>
@@ -150,6 +169,17 @@ new #[Title('Katalog Seragam')] class extends Component {
                             <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $item->id }})" aria-label="Ubah">
                                 <x-icon name="pencil-square" class="size-4" />
                             </button>
+                            <x-confirm-button
+                                :action="'delete('.$item->id.')'"
+                                title="Hapus item seragam"
+                                :message="'Hapus '.$item->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                                confirm-label="Hapus"
+                                danger
+                                class="btn btn-sm btn-ghost btn-square text-error"
+                                aria-label="Hapus {{ $item->name }}"
+                            >
+                                <x-icon name="trash" class="size-4" />
+                            </x-confirm-button>
                         </td>
                     </tr>
                 @empty
@@ -170,7 +200,7 @@ new #[Title('Katalog Seragam')] class extends Component {
                 <x-input wire:model="name" label="Nama item" placeholder="Seragam batik" required class="sm:col-span-2" />
                 <x-input wire:model="size" label="Ukuran" placeholder="M" />
             </div>
-            <x-input wire:model="price" label="Harga (Rp)" type="number" min="1000" step="500" required />
+            <x-money-input wire:model="price" label="Harga" required />
             <label class="label cursor-pointer gap-2 text-base-content">
                 <input type="checkbox" class="toggle toggle-primary toggle-sm" wire:model="is_active" />
                 <span class="text-sm">Masih dijual</span>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Enums\Role;
 use App\Models\ActivityLog;
 use App\Models\User;
@@ -10,6 +11,7 @@ use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -136,6 +138,23 @@ new #[Title('Data Pengguna')] class extends Component {
         $this->dispatch('toast', variant: 'success', text: 'Akun pengguna disimpan.');
         unset($this->users);
     }
+    public function delete(User $user, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-master-data');
+
+        try {
+            $deleteUnusedRecord->handle($user);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        ActivityLog::record('user.deleted', 'Menghapus akun pengguna '.$user->name, properties: ['user_id' => $user->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Akun pengguna dihapus.');
+        unset($this->users);
+    }
 }; ?>
 
 <div>
@@ -181,6 +200,17 @@ new #[Title('Data Pengguna')] class extends Component {
                             <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $user->id }})" aria-label="Ubah">
                                 <x-icon name="pencil-square" class="size-4" />
                             </button>
+                            <x-confirm-button
+                                :action="'delete('.$user->id.')'"
+                                title="Hapus akun pengguna"
+                                :message="'Hapus '.$user->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                                confirm-label="Hapus"
+                                danger
+                                class="btn btn-sm btn-ghost btn-square text-error"
+                                aria-label="Hapus {{ $user->name }}"
+                            >
+                                <x-icon name="trash" class="size-4" />
+                            </x-confirm-button>
                         </td>
                     </tr>
                 @empty

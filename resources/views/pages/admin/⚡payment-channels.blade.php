@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Enums\CashAccountType;
 use App\Enums\PaymentChannelType;
 use App\Models\ActivityLog;
@@ -8,9 +9,11 @@ use App\Models\Level;
 use App\Models\PaymentChannel;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 
@@ -179,6 +182,27 @@ new #[Title('Rekening & QRIS')] class extends Component {
         $this->reset('qrisImage');
         unset($this->channels);
     }
+    public function delete(PaymentChannel $channel, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-payment-settings');
+
+        try {
+            $deleteUnusedRecord->handle($channel);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        if ($channel->qris_image_path !== null) {
+            Storage::disk('local')->delete($channel->qris_image_path);
+        }
+
+        ActivityLog::record('payment_channel.deleted', 'Menghapus tujuan pembayaran '.$channel->name, properties: ['payment_channel_id' => $channel->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Tujuan pembayaran dihapus.');
+        unset($this->channels);
+    }
 }; ?>
 
 <div>
@@ -211,6 +235,17 @@ new #[Title('Rekening & QRIS')] class extends Component {
                         <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $channel->id }})" aria-label="Ubah">
                             <x-icon name="pencil-square" class="size-4" />
                         </button>
+                        <x-confirm-button
+                            :action="'delete('.$channel->id.')'"
+                            title="Hapus tujuan pembayaran"
+                            :message="'Hapus '.$channel->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                            confirm-label="Hapus"
+                            danger
+                            class="btn btn-sm btn-ghost btn-square text-error"
+                            aria-label="Hapus {{ $channel->name }}"
+                        >
+                            <x-icon name="trash" class="size-4" />
+                        </x-confirm-button>
                     </div>
 
                     @if ($channel->type === \App\Enums\PaymentChannelType::Qris)
@@ -248,7 +283,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
             <x-input wire:model="name" label="Nama tampilan" placeholder="contoh: BSI SD Lentera" required />
             <x-select wire:model="cash_account_id" label="Uang masuk ke akun kas" placeholder="Pilih rekening bank di Akun Kas" required>
                 @foreach ($this->bankAccounts as $bankAccount)
-                    <option value="{{ $bankAccount->id }}" wire:key="bank-account-{{ $bankAccount->id }}">{{ $bankAccount->name }} · {{ $bankAccount->account_number }}</option>
+                    <option value="{{ $bankAccount->id }}" wire:key="bank-account-{{ $bankAccount->id }}">{{ $bankAccount->name }} ({{ $bankAccount->account_number }})</option>
                 @endforeach
             </x-select>
             @if ($level_id && $this->bankAccounts->isEmpty())

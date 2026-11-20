@@ -278,7 +278,7 @@ new #[Title('Terbitkan Tagihan')] class extends Component {
         <x-icon name="arrow-left" class="size-4" /> Kembali ke daftar tagihan
     </a>
 
-    <x-page-header title="Terbitkan Tagihan" :description="'Jenjang '.($this->activeLevel?->name ?? '-').' · Tahun ajaran '.($this->academicYear?->name ?? '-')" />
+    <x-page-header title="Terbitkan Tagihan" :meta="['Jenjang '.($this->activeLevel?->name ?? '-'), 'Tahun ajaran '.($this->academicYear?->name ?? '-')]" />
 
     @if ($this->activeLevel === null)
         <div role="alert" class="alert alert-info">
@@ -312,7 +312,7 @@ new #[Title('Terbitkan Tagihan')] class extends Component {
                                 @endforeach
                             </x-select>
                         @endif
-                        <x-input wire:model="amountOverride" label="Nominal khusus (kosongkan untuk pakai tarif)" type="number" min="1000" step="500" />
+                        <x-money-input wire:model="amountOverride" label="Nominal khusus (kosongkan untuk pakai tarif)" />
                     </div>
 
                     @if ($this->category?->billing_cycle === \App\Enums\BillingCycle::Monthly)
@@ -336,9 +336,9 @@ new #[Title('Terbitkan Tagihan')] class extends Component {
                     <p class="text-sm text-base-content/70">Tagihan yang sudah pernah diterbitkan untuk siswa dan periode yang sama akan dilewati.</p>
 
                     <div class="card-actions justify-end">
-                        <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" wire:confirm="Terbitkan tagihan sekarang?">
+                        <x-confirm-button action="issue()" title="Terbitkan tagihan" message="Terbitkan tagihan sekarang? Tagihan yang sudah pernah terbit untuk periode yang sama akan dilewati." confirm-label="Terbitkan" class="btn btn-primary" wire:loading.attr="disabled">
                             Terbitkan tagihan
-                        </button>
+                        </x-confirm-button>
                     </div>
                 </div>
             </form>
@@ -348,10 +348,10 @@ new #[Title('Terbitkan Tagihan')] class extends Component {
                     <fieldset class="fieldset p-0">
                         <legend class="fieldset-legend pt-0">Siswa</legend>
                         @if ($this->student)
-                            <div class="flex items-center justify-between rounded-box border border-base-300 p-3">
+                            <div class="flex items-center justify-between rounded-box border border-base-300 bg-base-100 p-3">
                                 <div>
                                     <div class="font-medium">{{ $this->student->name }}</div>
-                                    <div class="text-sm text-base-content/60">NIS {{ $this->student->nis ?? '-' }} · Kelas {{ $this->student->currentEnrollment?->classroom->name ?? '-' }}</div>
+                                    <div class="text-sm text-base-content/60">NIS {{ $this->student->nis ?? '-' }}, kelas {{ $this->student->currentEnrollment?->classroom->name ?? '-' }}</div>
                                 </div>
                                 <button type="button" class="btn btn-sm btn-ghost" wire:click="$set('studentId', null)">Ganti</button>
                             </div>
@@ -361,11 +361,11 @@ new #[Title('Terbitkan Tagihan')] class extends Component {
                                 <input type="search" wire:model.live.debounce.300ms="studentSearch" placeholder="Cari nama atau NIS siswa" />
                             </label>
                             @if ($this->studentCandidates->isNotEmpty())
-                                <ul class="menu mt-1 w-full rounded-box border border-base-300">
+                                <ul class="menu mt-1 w-full rounded-box border border-base-300 bg-base-100">
                                     @foreach ($this->studentCandidates as $candidate)
                                         <li wire:key="candidate-{{ $candidate->id }}">
                                             <button type="button" wire:click="selectStudent({{ $candidate->id }})">
-                                                {{ $candidate->name }} <span class="text-base-content/60">· {{ $candidate->currentEnrollment?->classroom->name ?? '-' }}</span>
+                                                {{ $candidate->name }} <span class="text-base-content/60">(kelas {{ $candidate->currentEnrollment?->classroom->name ?? '-' }})</span>
                                             </button>
                                         </li>
                                     @endforeach
@@ -407,7 +407,7 @@ new #[Title('Terbitkan Tagihan')] class extends Component {
                             </div>
                         </fieldset>
                     @else
-                        <x-input wire:model="amount" label="Nominal (Rp)" type="number" min="1000" step="500" class="max-w-xs" />
+                        <x-money-input wire:model="amount" label="Nominal" class="max-w-xs" />
                     @endif
 
                     <div class="card-actions justify-end">

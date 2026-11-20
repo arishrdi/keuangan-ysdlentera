@@ -68,7 +68,7 @@ class DecideBudgetProposal
 
     private function notify(BudgetProposal $proposal, User $actor, BudgetStatus $status): void
     {
-        $summary = $proposal->number.' · '.$proposal->title.' ('.Number::rupiah($proposal->total_amount).')';
+        $summary = $proposal->number.' '.$proposal->title.' ('.Number::rupiah($proposal->total_amount).')';
 
         if ($status === BudgetStatus::AwaitingFoundation) {
             Notification::send(
@@ -79,7 +79,7 @@ class DecideBudgetProposal
 
         Notification::send(
             User::query()->where('role', Role::Treasurer)->where('is_active', true)->get(),
-            new BudgetProposalUpdated($proposal, 'Status anggaran: '.$status->label(), $summary.' · oleh '.$actor->name.'.'),
+            new BudgetProposalUpdated($proposal, 'Status anggaran: '.$status->label(), $summary.' oleh '.$actor->name.'.'),
         );
     }
 }

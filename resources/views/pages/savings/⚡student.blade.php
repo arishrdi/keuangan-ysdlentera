@@ -154,7 +154,7 @@ new class extends Component {
 
     <x-page-header
         :title="'Tabungan '.$student->name"
-        :description="$student->level->name.' · Kelas '.($student->currentEnrollment?->classroom->name ?? '-').' · NIS '.($student->nis ?? '-').' · '.$student->status->label()"
+        :meta="[$student->level->name, 'Kelas '.($student->currentEnrollment?->classroom->name ?? '-'), 'NIS '.($student->nis ?? '-'), $student->status->label()]"
     >
         <x-slot:actions>
             @if ($this->canManage)
@@ -226,7 +226,7 @@ new class extends Component {
             <form wire:submit="save" class="space-y-4">
                 <div class="rounded-box bg-base-200 p-3 text-sm">Saldo saat ini: <strong>{{ \Illuminate\Support\Number::rupiah($this->balance) }}</strong></div>
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-input wire:model="amount" label="Nominal (Rp)" type="number" min="1" required />
+                    <x-money-input wire:model="amount" label="Nominal" required />
                     <x-input wire:model="transactedOn" :label="$type === 'saldo_awal' ? 'Per tanggal' : 'Tanggal'" type="date" required />
                 </div>
                 @if ($type !== 'saldo_awal')

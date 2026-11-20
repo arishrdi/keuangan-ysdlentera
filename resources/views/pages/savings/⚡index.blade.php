@@ -168,7 +168,7 @@ new #[Title('Tabungan')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Tabungan Siswa" :description="($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang').' · Dana titipan siswa, terpisah dari kas sekolah.'" />
+    <x-page-header title="Tabungan Siswa" :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang')]" description="Dana titipan siswa, terpisah dari kas sekolah." />
 
     <div class="stats stats-vertical mb-6 w-full border border-base-300 md:stats-horizontal">
         <div class="stat">
@@ -194,7 +194,7 @@ new #[Title('Tabungan')] class extends Component {
         <select class="select select-sm w-44" wire:model.live="classroomId" aria-label="Kelas">
             <option value="">Semua kelas</option>
             @foreach ($this->classrooms as $classroom)
-                <option value="{{ $classroom->id }}" wire:key="classroom-{{ $classroom->id }}">{{ $classroom->level->code }} · {{ $classroom->name }}</option>
+                <option value="{{ $classroom->id }}" wire:key="classroom-{{ $classroom->id }}">{{ $classroom->name }} ({{ $classroom->level->code }})</option>
             @endforeach
         </select>
         <label class="label cursor-pointer gap-2 text-base-content">
@@ -256,7 +256,7 @@ new #[Title('Tabungan')] class extends Component {
                     <div class="rounded-box bg-base-200 p-3 text-sm">Saldo saat ini: <strong>{{ \Illuminate\Support\Number::rupiah((int) $this->student->savings_balance) }}</strong></div>
                 @endif
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-input wire:model="amount" label="Nominal (Rp)" type="number" min="1" required />
+                    <x-money-input wire:model="amount" label="Nominal" required />
                     <x-input wire:model="transactedOn" label="Tanggal" type="date" required />
                 </div>
                 <x-input wire:model="notes" label="Catatan (opsional)" />

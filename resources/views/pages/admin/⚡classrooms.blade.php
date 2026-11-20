@@ -210,15 +210,17 @@ new #[Title('Kelas')] class extends Component {
                                     <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $classroom->id }})" aria-label="Ubah">
                                         <x-icon name="pencil-square" class="size-4" />
                                     </button>
-                                    <button
-                                        type="button"
+                                    <x-confirm-button
+                                        :action="'delete('.$classroom->id.')'"
+                                        title="Hapus kelas"
+                                        :message="'Hapus kelas '.$classroom->name.'? Kelas yang sudah berisi siswa tidak bisa dihapus.'"
+                                        confirm-label="Hapus"
+                                        danger
                                         class="btn btn-sm btn-ghost btn-square text-error"
-                                        wire:click="delete({{ $classroom->id }})"
-                                        wire:confirm="Hapus kelas {{ $classroom->name }}?"
                                         aria-label="Hapus"
                                     >
                                         <x-icon name="trash" class="size-4" />
-                                    </button>
+                                    </x-confirm-button>
                                 </div>
                             </td>
                         </tr>

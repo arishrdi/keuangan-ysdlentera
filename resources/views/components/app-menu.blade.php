@@ -68,11 +68,14 @@
     @endphp
 
     @if ($items !== [])
-        <ul class="menu w-full px-0">
-            <li class="menu-title">{{ $group['title'] }}</li>
+        <p class="sidebar-title">{{ $group['title'] }}</p>
+        <ul class="grid gap-0.5">
             @foreach ($items as $item)
+                @php
+                    $isCurrent = request()->routeIs($item['active']);
+                @endphp
                 <li>
-                    <a href="{{ route($item['route']) }}" @class(['menu-active' => request()->routeIs($item['active'])]) wire:navigate>
+                    <a href="{{ route($item['route']) }}" class="sidebar-link" @if ($isCurrent) aria-current="page" @endif wire:navigate>
                         <x-icon :name="$item['icon']" />
                         {{ $item['label'] }}
                     </a>

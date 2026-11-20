@@ -44,7 +44,7 @@ new class extends Component {
         <x-icon name="arrow-left" class="size-4" /> Kembali ke daftar siswa
     </a>
 
-    <x-page-header :title="$student->name" :description="$student->level->name.' · NIS '.($student->nis ?? '-')">
+    <x-page-header :title="$student->name" :meta="[$student->level->name, 'NIS '.($student->nis ?? '-')]">
         <x-slot:actions>
             <span class="badge badge-lg {{ $student->status->badgeClass() }}">{{ $student->status->label() }}</span>
         </x-slot:actions>
@@ -71,7 +71,10 @@ new class extends Component {
                     @forelse ($student->guardians as $guardian)
                         <li wire:key="guardian-{{ $guardian->id }}">
                             <div class="font-medium">{{ $guardian->name }} <span class="badge badge-ghost badge-sm">{{ $guardian->pivot->relationship }}</span></div>
-                            <div class="text-base-content/60">{{ $guardian->phone }} {{ $guardian->email ? '· '.$guardian->email : '' }}</div>
+                            <div class="text-base-content/60">{{ $guardian->phone }}</div>
+                            @if ($guardian->email)
+                                <div class="text-base-content/60">{{ $guardian->email }}</div>
+                            @endif
                         </li>
                     @empty
                         <li class="text-base-content/60">Belum ada wali terhubung.</li>
@@ -107,7 +110,7 @@ new class extends Component {
                     @forelse ($this->activities as $activity)
                         <li wire:key="activity-{{ $activity->id }}">
                             <div>{{ $activity->description }}</div>
-                            <div class="text-xs text-base-content/60">{{ $activity->user?->name ?? 'Sistem' }} · {{ $activity->created_at->translatedFormat('j M Y H:i') }}</div>
+                            <div class="text-xs text-base-content/60">{{ $activity->user?->name ?? 'Sistem' }}, {{ $activity->created_at->translatedFormat('j M Y H:i') }}</div>
                         </li>
                     @empty
                         <li class="text-base-content/60">Belum ada riwayat.</li>

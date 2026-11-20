@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Enums\Role;
 use App\Models\ActivityLog;
 use App\Models\Student;
@@ -12,6 +13,7 @@ use Illuminate\Validation\Rules\Password;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -221,6 +223,25 @@ new #[Title('Wali Murid')] class extends Component {
 
         unset($this->linkingGuardian, $this->guardians);
     }
+    public function delete(User $guardian, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-master-data');
+
+        abort_unless($guardian->hasRole(Role::Guardian), 404);
+
+        try {
+            $deleteUnusedRecord->handle($guardian);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        ActivityLog::record('guardian.deleted', 'Menghapus akun wali '.$guardian->name, properties: ['guardian_id' => $guardian->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Akun wali dihapus.');
+        unset($this->guardians);
+    }
 }; ?>
 
 <div>
@@ -253,15 +274,16 @@ new #[Title('Wali Murid')] class extends Component {
                         <td class="font-medium">{{ $guardian->name }}</td>
                         <td class="text-sm">{{ $guardian->phone }}<br><span class="text-base-content/60">{{ $guardian->email }}</span></td>
                         <td>
-                            <div class="flex flex-wrap gap-1">
+                            <ul class="space-y-1 text-sm">
                                 @forelse ($guardian->students as $student)
-                                    <span class="badge badge-outline" wire:key="guardian-{{ $guardian->id }}-student-{{ $student->id }}">
-                                        {{ $student->name }} · {{ $student->level->code }}
-                                    </span>
+                                    <li class="flex items-baseline gap-2" wire:key="guardian-{{ $guardian->id }}-student-{{ $student->id }}">
+                                        <span class="font-medium">{{ $student->name }}</span>
+                                        <span class="shrink-0 rounded-field bg-base-200 px-1.5 text-xs text-base-content/70">{{ $student->level->code }}</span>
+                                    </li>
                                 @empty
-                                    <span class="text-sm text-base-content/60">Belum ada</span>
+                                    <li class="text-base-content/60">Belum ada</li>
                                 @endforelse
-                            </div>
+                            </ul>
                         </td>
                         <td>
                             @if ($guardian->is_active)
@@ -278,6 +300,17 @@ new #[Title('Wali Murid')] class extends Component {
                                 <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $guardian->id }})" aria-label="Ubah">
                                     <x-icon name="pencil-square" class="size-4" />
                                 </button>
+                                <x-confirm-button
+                                    :action="'delete('.$guardian->id.')'"
+                                    title="Hapus akun wali"
+                                    :message="'Hapus '.$guardian->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                                    confirm-label="Hapus"
+                                    danger
+                                    class="btn btn-sm btn-ghost btn-square text-error"
+                                    aria-label="Hapus {{ $guardian->name }}"
+                                >
+                                    <x-icon name="trash" class="size-4" />
+                                </x-confirm-button>
                             </div>
                         </td>
                     </tr>
@@ -322,21 +355,27 @@ new #[Title('Wali Murid')] class extends Component {
 
     <x-modal name="guardian-students" :title="'Anak terhubung'.($this->linkingGuardian ? ' — '.$this->linkingGuardian->name : '')" max-width="max-w-2xl">
         @if ($this->linkingGuardian)
-            <ul class="mb-6 divide-y divide-base-300 rounded-box border border-base-300">
+            <ul class="mb-6 divide-y divide-base-300 rounded-box border border-base-300 bg-base-100">
                 @forelse ($this->linkingGuardian->students as $student)
                     <li class="flex items-center justify-between gap-2 p-3" wire:key="linked-{{ $student->id }}">
                         <div>
                             <div class="font-medium">{{ $student->name }}</div>
-                            <div class="text-sm text-base-content/60">{{ $student->level->name }} · NIS {{ $student->nis ?? '-' }} · {{ $student->pivot->relationship }}</div>
+                            <div class="flex flex-wrap gap-x-3 text-sm text-base-content/60">
+                                <span>{{ $student->level->name }}</span>
+                                <span>NIS {{ $student->nis ?? '-' }}</span>
+                                <span>{{ $student->pivot->relationship }}</span>
+                            </div>
                         </div>
-                        <button
-                            type="button"
+                        <x-confirm-button
+                            :action="'unlinkStudent('.$student->id.')'"
+                            title="Lepas hubungan"
+                            :message="'Lepas hubungan wali dengan '.$student->name.'? Wali tidak lagi melihat tagihan siswa ini.'"
+                            confirm-label="Lepas"
+                            danger
                             class="btn btn-sm btn-ghost text-error"
-                            wire:click="unlinkStudent({{ $student->id }})"
-                            wire:confirm="Lepas hubungan dengan {{ $student->name }}?"
                         >
                             Lepas
-                        </button>
+                        </x-confirm-button>
                     </li>
                 @empty
                     <li class="p-3 text-sm text-base-content/60">Belum ada siswa terhubung.</li>
@@ -356,11 +395,11 @@ new #[Title('Wali Murid')] class extends Component {
             </div>
 
             @if ($this->studentCandidates->isNotEmpty())
-                <ul class="menu mt-2 w-full rounded-box border border-base-300">
+                <ul class="menu mt-2 w-full rounded-box border border-base-300 bg-base-100">
                     @foreach ($this->studentCandidates as $candidate)
                         <li wire:key="candidate-{{ $candidate->id }}">
                             <button type="button" wire:click="linkStudent({{ $candidate->id }})" class="justify-between">
-                                <span>{{ $candidate->name }} <span class="text-base-content/60">· NIS {{ $candidate->nis ?? '-' }}</span></span>
+                                <span>{{ $candidate->name }} <span class="text-base-content/60">(NIS {{ $candidate->nis ?? '-' }})</span></span>
                                 <span class="badge badge-outline">{{ $candidate->level->code }}</span>
                             </button>
                         </li>

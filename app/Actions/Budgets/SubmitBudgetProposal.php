@@ -49,7 +49,7 @@ class SubmitBudgetProposal
 
         Notification::send(
             User::query()->where('role', Role::Principal)->where('is_active', true)->get(),
-            new BudgetProposalUpdated($proposal, 'Pengajuan anggaran baru', $proposal->number.' · '.$proposal->title.' ('.$proposal->level->name.') sebesar '.Number::rupiah($proposal->total_amount).' menunggu persetujuan Anda.'),
+            new BudgetProposalUpdated($proposal, 'Pengajuan anggaran baru', $proposal->number.' '.$proposal->title.' ('.$proposal->level->name.') sebesar '.Number::rupiah($proposal->total_amount).' menunggu persetujuan Anda.'),
         );
 
         return $proposal;

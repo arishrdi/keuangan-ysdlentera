@@ -53,7 +53,7 @@ class IncomeReport extends Report
 
         return new ReportTable(
             title: static::title(),
-            subtitle: $filters->levelLabel().' · '.$filters->periodLabel(),
+            subtitle: $filters->levelLabel().', '.$filters->periodLabel(),
             columns: [
                 self::column('date', 'Tanggal', 'date'),
                 self::column('number', 'No. transaksi'),

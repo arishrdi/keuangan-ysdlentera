@@ -285,7 +285,8 @@ new class extends Component {
 <div>
     <x-page-header
         :title="$this->isIncome ? 'Pemasukan' : 'Pengeluaran'"
-        :description="($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang').' · '.($this->isIncome ? 'Pembayaran siswa masuk otomatis; catat di sini pemasukan lain seperti donasi.' : 'Catat setiap uang yang keluar beserta buktinya.')"
+        :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang')]"
+        :description="($this->isIncome ? 'Pembayaran siswa masuk otomatis; catat di sini pemasukan lain seperti donasi.' : 'Catat setiap uang yang keluar beserta buktinya.')"
     >
         <x-slot:actions>
             @if ($this->canManage)
@@ -385,13 +386,13 @@ new class extends Component {
                             <option value="{{ $category->id }}" wire:key="form-category-{{ $category->id }}">{{ $category->name }}</option>
                         @endforeach
                     </x-select>
-                    <x-input wire:model="amount" label="Nominal (Rp)" type="number" min="1" required />
+                    <x-money-input wire:model="amount" label="Nominal" required />
                     <x-input wire:model="transactedOn" label="Tanggal" type="date" required />
                 </div>
                 @unless ($this->isIncome)
                     <x-select wire:model="budgetId" label="Realisasi dari anggaran (opsional)" placeholder="Tidak terkait anggaran">
                         @foreach ($this->budgets as $budget)
-                            <option value="{{ $budget->id }}" wire:key="budget-{{ $budget->id }}">{{ $budget->number }} · {{ $budget->title }} (sisa {{ \Illuminate\Support\Number::rupiah($budget->total_amount - (int) $budget->realized_amount) }})</option>
+                            <option value="{{ $budget->id }}" wire:key="budget-{{ $budget->id }}">{{ $budget->title }} ({{ $budget->number }}, sisa {{ \Illuminate\Support\Number::rupiah($budget->total_amount - (int) $budget->realized_amount) }})</option>
                         @endforeach
                     </x-select>
                 @endunless

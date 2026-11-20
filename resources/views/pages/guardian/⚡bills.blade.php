@@ -170,22 +170,28 @@ new #[Title('Tagihan Anak')] class extends Component {
 }; ?>
 
 <div class="pb-28">
-    <x-page-header title="Tagihan" description="Pilih tagihan yang akan dibayar, transfer ke rekening atau QRIS sekolah, lalu unggah buktinya." />
+    <x-guardian.band title="Tagihan" description="Pilih tagihan, transfer ke rekening atau QRIS sekolah, lalu unggah buktinya.">
+        @if ($this->children->count() > 1)
+            <x-guardian.child-pills :children="$this->children" :active="$studentId" />
+        @endif
+    </x-guardian.band>
 
     @if ($this->children->isEmpty())
-        <div class="rounded-box border border-dashed border-base-300 p-6 text-sm text-base-content/70">Belum ada siswa yang terhubung dengan akun Anda. Hubungi admin sekolah.</div>
+        <x-guardian.overlap>
+            <div class="panel p-6 text-sm text-base-content/70 shadow-sm">Belum ada siswa yang terhubung dengan akun Anda. Hubungi admin sekolah.</div>
+        </x-guardian.overlap>
     @else
-        @if ($this->children->count() > 1)
-            <div role="tablist" class="tabs tabs-box mb-4 w-full overflow-x-auto">
-                @foreach ($this->children as $child)
-                    <button type="button" role="tab" wire:key="child-tab-{{ $child->id }}" @class(['tab', 'tab-active' => $child->id === $studentId]) wire:click="$set('studentId', {{ $child->id }})">
-                        {{ $child->name }}
-                    </button>
-                @endforeach
+        <x-guardian.overlap>
+        <div class="panel flex items-center justify-between gap-3 px-5 py-4 shadow-sm">
+            <div class="min-w-0">
+                <p class="truncate font-semibold">{{ $this->student->name }}</p>
+                <p class="text-sm text-base-content/65">{{ $this->student->level->name }}, kelas {{ $this->student->currentEnrollment?->classroom->name ?? '-' }}</p>
             </div>
-        @endif
-
-        <p class="mb-3 text-sm text-base-content/70">{{ $this->student->name }} · {{ $this->student->level->name }} · Kelas {{ $this->student->currentEnrollment?->classroom->name ?? '-' }}</p>
+            <div class="shrink-0 text-end">
+                <p class="text-xs text-base-content/60">Sisa tagihan</p>
+                <p class="font-bold text-primary">{{ \Illuminate\Support\Number::rupiah($this->bills->sum(fn ($bill) => $bill->remainingAmount())) }}</p>
+            </div>
+        </div>
 
         <div class="space-y-3">
             @forelse ($this->bills as $bill)
@@ -193,57 +199,73 @@ new #[Title('Tagihan Anak')] class extends Component {
                     $isSelected = array_key_exists($bill->id, $allocations);
                     $payable = $bill->payableAmount();
                 @endphp
-                <div wire:key="bill-{{ $bill->id }}" @class(['card border bg-base-100', 'border-primary ring-1 ring-primary' => $isSelected, 'border-base-300' => ! $isSelected])>
-                    <div class="card-body gap-2 p-4">
+                <div wire:key="bill-{{ $bill->id }}" @class(['panel transition-colors', 'border-primary ring-1 ring-primary' => $isSelected])>
+                    <div class="p-4">
                         <div class="flex items-start gap-3">
                             @if ($payable > 0)
-                                <input type="checkbox" class="checkbox checkbox-primary mt-1" @checked($isSelected) wire:click="toggleBill({{ $bill->id }})" aria-label="Bayar {{ $bill->description }}" />
+                                <input type="checkbox" class="checkbox checkbox-primary mt-0.5" @checked($isSelected) wire:click="toggleBill({{ $bill->id }})" aria-label="Bayar {{ $bill->description }}" />
                             @endif
                             <div class="flex-1">
                                 <div class="flex flex-wrap items-center justify-between gap-2">
                                     <h3 class="font-semibold">{{ $bill->description }}</h3>
-                                    <span class="badge badge-sm {{ $bill->status->badgeClass() }}">{{ $bill->status->label() }}</span>
+                                    <span class="badge badge-soft badge-sm font-semibold {{ $bill->status->badgeClass() }}">{{ $bill->status->label() }}</span>
                                 </div>
-                                <div class="text-sm text-base-content/70">
-                                    {{ $bill->paymentCategory->name }}
-                                    @if ($bill->due_date) · <span @class(['text-error font-medium' => $bill->isOverdue()])>Jatuh tempo {{ $bill->due_date->translatedFormat('j M Y') }}</span>@endif
-                                </div>
+                                <div class="text-sm text-base-content/70">{{ $bill->paymentCategory->name }}</div>
+                                @if ($bill->due_date)
+                                    <div @class(['text-sm', 'font-medium text-error' => $bill->isOverdue(), 'text-base-content/70' => ! $bill->isOverdue()])>
+                                        {{ $bill->isOverdue() ? 'Lewat jatuh tempo' : 'Jatuh tempo' }} {{ $bill->due_date->translatedFormat('j M Y') }}
+                                    </div>
+                                @endif
                                 @if ($bill->items->isNotEmpty())
                                     <div class="text-xs text-base-content/60">{{ $bill->items->map(fn ($item) => $item->quantity.'× '.$item->name.($item->size ? ' ('.$item->size.')' : ''))->join(', ') }}</div>
                                 @endif
-                                <div class="mt-1 flex flex-wrap gap-x-4 text-sm">
-                                    <span>Tagihan <strong class="font-mono">{{ \Illuminate\Support\Number::rupiah($bill->netAmount()) }}</strong></span>
-                                    @if ($bill->paid_amount > 0)<span>Dibayar <strong class="font-mono">{{ \Illuminate\Support\Number::rupiah($bill->paid_amount) }}</strong></span>@endif
-                                    <span>Sisa <strong class="font-mono text-error">{{ \Illuminate\Support\Number::rupiah($bill->remainingAmount()) }}</strong></span>
-                                </div>
+                                <dl class="mt-3 grid grid-cols-3 gap-2 rounded-field bg-base-200 p-3 text-sm">
+                                    <div>
+                                        <dt class="text-xs text-base-content/60">Tagihan</dt>
+                                        <dd class="font-semibold">{{ \Illuminate\Support\Number::rupiah($bill->netAmount()) }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-base-content/60">Dibayar</dt>
+                                        <dd class="font-semibold">{{ \Illuminate\Support\Number::rupiah($bill->paid_amount) }}</dd>
+                                    </div>
+                                    <div>
+                                        <dt class="text-xs text-base-content/60">Sisa</dt>
+                                        <dd @class(['font-semibold', 'text-error' => $bill->remainingAmount() > 0])>{{ \Illuminate\Support\Number::rupiah($bill->remainingAmount()) }}</dd>
+                                    </div>
+                                </dl>
                                 @if ($bill->pending_amount > 0)
-                                    <div class="mt-1 text-sm text-warning">{{ \Illuminate\Support\Number::rupiah($bill->pending_amount) }} sedang menunggu verifikasi bendahara.</div>
+                                    <div class="mt-2 text-sm font-medium text-warning-content">{{ \Illuminate\Support\Number::rupiah($bill->pending_amount) }} sedang menunggu verifikasi bendahara.</div>
                                 @endif
                                 @if ($isSelected && $bill->paymentCategory->is_installable)
-                                    <label class="input input-sm mt-2 w-full max-w-60">
-                                        <span class="text-base-content/60">Bayar Rp</span>
-                                        <input type="number" min="10000" max="{{ $payable }}" step="1000" wire:model.live.debounce.500ms="allocations.{{ $bill->id }}" aria-label="Nominal cicilan {{ $bill->description }}" />
-                                    </label>
+                                    <x-money-input wire:model.live.debounce.500ms="allocations.{{ $bill->id }}" label="Nominal yang dibayar" class="mt-3 max-w-60" aria-label="Nominal cicilan {{ $bill->description }}" />
                                     <p class="mt-1 text-xs text-base-content/60">Boleh dicicil, minimal Rp10.000.</p>
                                 @endif
-                                @error('allocations.'.$bill->id) <p class="mt-1 text-sm text-error">{{ $message }}</p> @enderror
                             </div>
                         </div>
                     </div>
                 </div>
             @empty
-                <div class="rounded-box border border-dashed border-success p-6 text-center text-sm">Alhamdulillah, tidak ada tagihan yang belum dibayar.</div>
+                <div class="panel flex items-center gap-4 p-5">
+                    <span class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
+                        <x-icon name="check" class="size-6" />
+                    </span>
+                    <div>
+                        <p class="font-semibold">Tidak ada tunggakan</p>
+                        <p class="text-sm text-base-content/70">Alhamdulillah, tidak ada tagihan yang belum dibayar.</p>
+                    </div>
+                </div>
             @endforelse
         </div>
+        </x-guardian.overlap>
 
         @if ($allocations !== [])
-            <div class="fixed inset-x-0 bottom-16 z-30 border-t border-base-300 bg-base-100 p-4 shadow-lg lg:bottom-0 lg:left-64">
+            <div class="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-base-300 bg-base-100 px-4 py-3 lg:bottom-0 lg:left-64">
                 <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
                     <div>
                         <div class="text-xs text-base-content/60">{{ count($allocations) }} tagihan dipilih</div>
                         <div class="text-lg font-semibold">{{ \Illuminate\Support\Number::rupiah($this->allocationTotal) }}</div>
                     </div>
-                    <button type="button" class="btn btn-primary" wire:click="openPayment">Bayar sekarang</button>
+                    <button type="button" class="btn btn-primary btn-lg" wire:click="openPayment">Bayar sekarang</button>
                 </div>
             </div>
         @endif
@@ -251,9 +273,9 @@ new #[Title('Tagihan Anak')] class extends Component {
 
     <x-modal name="pay" title="Bayar tagihan" max-width="max-w-xl">
         <form wire:submit="submit" class="space-y-4">
-            <div class="rounded-box bg-base-200 p-3">
-                <div class="text-sm text-base-content/70">Jumlah yang harus ditransfer</div>
-                <div class="text-2xl font-semibold">{{ \Illuminate\Support\Number::rupiah($this->allocationTotal) }}</div>
+            <div class="rounded-box bg-neutral p-4 text-neutral-content">
+                <div class="text-sm text-neutral-content/75">Jumlah yang harus ditransfer</div>
+                <div class="mt-1 text-3xl font-bold tracking-tight">{{ \Illuminate\Support\Number::rupiah($this->allocationTotal) }}</div>
             </div>
 
             @if ($this->channels->isEmpty())
@@ -263,12 +285,22 @@ new #[Title('Tagihan Anak')] class extends Component {
                     <legend class="fieldset-legend pt-0">1. Pilih tujuan pembayaran</legend>
                     <div class="grid gap-2">
                         @foreach ($this->channels as $channelOption)
-                            <label wire:key="channel-option-{{ $channelOption->id }}" @class(['flex cursor-pointer items-start gap-3 rounded-box border p-3', 'border-primary bg-primary/5' => $channelId === $channelOption->id, 'border-base-300' => $channelId !== $channelOption->id])>
+                            <label wire:key="channel-option-{{ $channelOption->id }}" @class(['flex cursor-pointer items-start gap-3 rounded-box border p-4 transition-colors', 'border-primary bg-primary/5' => $channelId === $channelOption->id, 'border-base-300' => $channelId !== $channelOption->id])>
                                 <input type="radio" class="radio radio-primary radio-sm mt-1" value="{{ $channelOption->id }}" wire:model.live="channelId" />
                                 <div class="text-sm">
                                     <div class="font-medium">{{ $channelOption->name }} <span class="badge badge-ghost badge-sm">{{ $channelOption->type->label() }}</span></div>
                                     @if ($channelOption->type === \App\Enums\PaymentChannelType::BankAccount)
-                                        <div>{{ $channelOption->bank_name }} · <span class="font-mono">{{ $channelOption->account_number }}</span></div>
+                                        <div>{{ $channelOption->bank_name }}</div>
+                                        <div class="mt-1 flex flex-wrap items-center gap-2">
+                                            <span class="font-mono text-lg font-bold tracking-wide text-primary">{{ $channelOption->account_number }}</span>
+                                            <button
+                                                type="button"
+                                                class="btn btn-primary btn-xs"
+                                                x-data="{ copied: false }"
+                                                x-on:click.prevent="navigator.clipboard.writeText(@js($channelOption->account_number)); copied = true; setTimeout(() => copied = false, 2000)"
+                                                x-text="copied ? 'Tersalin' : 'Salin'"
+                                            >Salin</button>
+                                        </div>
                                         <div class="text-base-content/60">a.n. {{ $channelOption->account_holder }}</div>
                                     @endif
                                 </div>

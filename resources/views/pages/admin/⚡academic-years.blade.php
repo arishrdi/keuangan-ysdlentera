@@ -1,11 +1,13 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Models\AcademicYear;
 use App\Models\ActivityLog;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 new #[Title('Tahun Ajaran')] class extends Component {
@@ -96,6 +98,23 @@ new #[Title('Tahun Ajaran')] class extends Component {
         $this->dispatch('toast', variant: 'success', text: 'Tahun ajaran '.$academicYear->name.' sekarang aktif.');
         unset($this->academicYears);
     }
+    public function delete(AcademicYear $academicYear, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-master-data');
+
+        try {
+            $deleteUnusedRecord->handle($academicYear);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        ActivityLog::record('academic_year.deleted', 'Menghapus tahun ajaran '.$academicYear->name, properties: ['academic_year_id' => $academicYear->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Tahun ajaran dihapus.');
+        unset($this->academicYears);
+    }
 }; ?>
 
 <div>
@@ -134,18 +153,30 @@ new #[Title('Tahun Ajaran')] class extends Component {
                         <td class="text-end">
                             <div class="flex justify-end gap-1">
                                 @unless ($academicYear->is_active)
-                                    <button
-                                        type="button"
+                                    <x-confirm-button
+                                        :action="'activate('.$academicYear->id.')'"
+                                        title="Aktifkan tahun ajaran"
+                                        :message="'Aktifkan tahun ajaran '.$academicYear->name.'? Tahun ajaran lain akan dinonaktifkan.'"
+                                        confirm-label="Aktifkan"
                                         class="btn btn-sm btn-ghost"
-                                        wire:click="activate({{ $academicYear->id }})"
-                                        wire:confirm="Aktifkan tahun ajaran {{ $academicYear->name }}? Tahun ajaran lain akan dinonaktifkan."
                                     >
                                         <x-icon name="check" class="size-4" /> Aktifkan
-                                    </button>
+                                    </x-confirm-button>
                                 @endunless
                                 <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $academicYear->id }})" aria-label="Ubah">
                                     <x-icon name="pencil-square" class="size-4" />
                                 </button>
+                                <x-confirm-button
+                                    :action="'delete('.$academicYear->id.')'"
+                                    title="Hapus tahun ajaran"
+                                    :message="'Hapus '.$academicYear->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                                    confirm-label="Hapus"
+                                    danger
+                                    class="btn btn-sm btn-ghost btn-square text-error"
+                                    aria-label="Hapus {{ $academicYear->name }}"
+                                >
+                                    <x-icon name="trash" class="size-4" />
+                                </x-confirm-button>
                             </div>
                         </td>
                     </tr>

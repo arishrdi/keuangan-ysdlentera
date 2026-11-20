@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Enums\CashAccountType;
 use App\Models\ActivityLog;
 use App\Models\CashAccount;
@@ -8,6 +9,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 new #[Title('Akun Kas')] class extends Component {
@@ -121,6 +123,23 @@ new #[Title('Akun Kas')] class extends Component {
         $this->dispatch('toast', variant: 'success', text: 'Akun kas disimpan.');
         unset($this->accounts);
     }
+    public function delete(CashAccount $account, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-payment-settings');
+
+        try {
+            $deleteUnusedRecord->handle($account);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        ActivityLog::record('cash_account.deleted', 'Menghapus akun kas '.$account->name, properties: ['cash_account_id' => $account->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Akun kas dihapus.');
+        unset($this->accounts);
+    }
 }; ?>
 
 <div>
@@ -150,7 +169,14 @@ new #[Title('Akun Kas')] class extends Component {
                         <td><span class="badge badge-outline">{{ $account->level->code }}</span></td>
                         <td class="font-medium">{{ $account->name }}</td>
                         <td>{{ $account->type->label() }}</td>
-                        <td class="text-sm">{{ $account->bank_name ? $account->bank_name.' · '.$account->account_number : '-' }}</td>
+                        <td class="text-sm">
+                            @if ($account->bank_name)
+                                {{ $account->bank_name }}
+                                <div class="font-mono text-xs text-base-content/60">{{ $account->account_number }}</div>
+                            @else
+                                -
+                            @endif
+                        </td>
                         <td>
                             @if ($account->is_active)
                                 <span class="badge badge-success">Aktif</span>
@@ -162,6 +188,17 @@ new #[Title('Akun Kas')] class extends Component {
                             <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $account->id }})" aria-label="Ubah">
                                 <x-icon name="pencil-square" class="size-4" />
                             </button>
+                            <x-confirm-button
+                                :action="'delete('.$account->id.')'"
+                                title="Hapus akun kas"
+                                :message="'Hapus '.$account->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                                confirm-label="Hapus"
+                                danger
+                                class="btn btn-sm btn-ghost btn-square text-error"
+                                aria-label="Hapus {{ $account->name }}"
+                            >
+                                <x-icon name="trash" class="size-4" />
+                            </x-confirm-button>
                         </td>
                     </tr>
                 @empty

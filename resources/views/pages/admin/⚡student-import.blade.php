@@ -117,7 +117,7 @@ new #[Title('Import Siswa')] class extends Component {
             <div>
                 <div class="font-semibold">Import selesai</div>
                 <div class="text-sm">
-                    {{ $result['students'] }} siswa ditambahkan · {{ count($result['guardians_created']) }} akun wali baru · {{ $result['guardians_linked'] }} siswa dihubungkan ke wali yang sudah ada.
+                    {{ $result['students'] }} siswa ditambahkan, {{ count($result['guardians_created']) }} akun wali baru, {{ $result['guardians_linked'] }} siswa dihubungkan ke wali yang sudah ada.
                 </div>
             </div>
             <div class="flex gap-2">
@@ -176,10 +176,17 @@ new #[Title('Import Siswa')] class extends Component {
             <span class="badge badge-error">{{ $this->counts['error'] }} error</span>
             <div class="ms-auto flex gap-2">
                 <button type="button" class="btn btn-ghost" wire:click="startOver">Ganti file</button>
-                <button type="button" class="btn btn-primary" wire:click="import" wire:loading.attr="disabled" @disabled($this->counts['baru'] === 0)
-                    wire:confirm="Impor {{ $this->counts['baru'] }} siswa? Baris yang error atau dilewati tidak ikut diimpor.">
+                <x-confirm-button
+                    action="import()"
+                    title="Impor siswa"
+                    :message="'Impor '.$this->counts['baru'].' siswa? Baris yang error atau dilewati tidak ikut diimpor.'"
+                    confirm-label="Impor"
+                    class="btn btn-primary"
+                    wire:loading.attr="disabled"
+                    :disabled="$this->counts['baru'] === 0"
+                >
                     Impor {{ $this->counts['baru'] }} siswa
-                </button>
+                </x-confirm-button>
             </div>
         </div>
 
@@ -191,7 +198,7 @@ new #[Title('Import Siswa')] class extends Component {
                         <th>Status</th>
                         <th>NIS</th>
                         <th>Nama siswa</th>
-                        <th>Jenjang · Kelas</th>
+                        <th>Jenjang dan kelas</th>
                         <th>Wali</th>
                         <th>Keterangan</th>
                     </tr>
@@ -205,7 +212,7 @@ new #[Title('Import Siswa')] class extends Component {
                             </td>
                             <td class="font-mono text-xs">{{ $row['data']['nis'] ?? '-' }}</td>
                             <td>{{ $row['data']['nama_siswa'] ?? '-' }}</td>
-                            <td>{{ $row['data']['jenjang'] ?? '-' }}{{ $row['data']['kelas'] ? ' · '.$row['data']['kelas'] : '' }}</td>
+                            <td>{{ $row['data']['jenjang'] ?? '-' }}{{ $row['data']['kelas'] ? ', kelas '.$row['data']['kelas'] : '' }}</td>
                             <td class="text-sm">{{ $row['data']['nama_wali'] ?? '' }}{{ $row['data']['hp_wali'] ? ' ('.$row['data']['hp_wali'].')' : '' }}</td>
                             <td @class(['text-sm', 'text-error' => $row['status'] === 'error', 'text-base-content/60' => $row['status'] !== 'error'])>{{ implode(' ', $row['messages']) }}</td>
                         </tr>

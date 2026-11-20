@@ -66,7 +66,7 @@ class BudgetRealizationReport extends Report
 
         return new ReportTable(
             title: static::title(),
-            subtitle: $filters->levelLabel().' · Diajukan '.$filters->periodLabel(),
+            subtitle: $filters->levelLabel().', diajukan '.$filters->periodLabel(),
             columns: [
                 self::column('submitted_at', 'Diajukan', 'date'),
                 self::column('number', 'Nomor'),

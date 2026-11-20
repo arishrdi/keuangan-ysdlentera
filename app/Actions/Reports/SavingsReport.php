@@ -82,7 +82,7 @@ class SavingsReport extends Report
 
         return new ReportTable(
             title: static::title(),
-            subtitle: $filters->levelLabel().' · '.$filters->periodLabel(),
+            subtitle: $filters->levelLabel().', '.$filters->periodLabel(),
             columns: [
                 self::column('level', 'Jenjang'),
                 self::column('classroom', 'Kelas'),

@@ -240,7 +240,7 @@ new class extends Component {
 
     <x-page-header
         :title="$student->name"
-        :description="$student->level->name.' · Kelas '.($student->currentEnrollment?->classroom->name ?? '-').' · NIS '.($student->nis ?? '-').' · Wali: '.($student->guardians->pluck('name')->join(', ') ?: '-')"
+        :meta="[$student->level->name, 'Kelas '.($student->currentEnrollment?->classroom->name ?? '-'), 'NIS '.($student->nis ?? '-'), 'Wali: '.($student->guardians->pluck('name')->join(', ') ?: '-')]"
     >
         <x-slot:actions>
             <label class="label cursor-pointer gap-2 text-base-content">
@@ -278,8 +278,10 @@ new class extends Component {
                         <td>
                             <div class="font-medium">{{ $bill->description }}</div>
                             <div class="text-xs text-base-content/60">
-                                {{ $bill->paymentCategory->name }} · {{ $bill->academicYear->name }}
-                                @if ($bill->paymentCategory->is_installable) · <span class="text-accent-content">boleh dicicil</span>@endif
+                                {{ $bill->paymentCategory->name }} {{ $bill->academicYear->name }}
+                                @if ($bill->paymentCategory->is_installable)
+                                    <span class="badge badge-ghost badge-xs ms-1">boleh dicicil</span>
+                                @endif
                             </div>
                             @if ($bill->items->isNotEmpty())
                                 <div class="text-xs text-base-content/60">{{ $bill->items->map(fn ($item) => $item->quantity.'× '.$item->name.($item->size ? ' ('.$item->size.')' : ''))->join(', ') }}</div>
@@ -295,11 +297,10 @@ new class extends Component {
                         <td class="text-end font-mono">{{ \Illuminate\Support\Number::rupiah($bill->paid_amount) }}</td>
                         <td class="text-end font-mono">
                             @if ($isSelected && $bill->paymentCategory->is_installable)
-                                <input type="number" min="1000" max="{{ $bill->payableAmount() }}" class="input input-sm w-32 text-end" wire:model.live.debounce.500ms="allocations.{{ $bill->id }}" aria-label="Nominal dibayar {{ $bill->description }}" />
+                                <x-money-input wire:model.live.debounce.500ms="allocations.{{ $bill->id }}" size="sm" class="ms-auto w-40" aria-label="Nominal dibayar {{ $bill->description }}" />
                             @else
                                 {{ \Illuminate\Support\Number::rupiah($bill->remainingAmount()) }}
                             @endif
-                            @error('allocations.'.$bill->id) <div class="text-xs text-error">{{ $message }}</div> @enderror
                         </td>
                         <td @class(['text-error font-medium' => $bill->isOverdue()])>{{ $bill->due_date?->translatedFormat('j M Y') ?? '-' }}</td>
                         <td>
@@ -426,7 +427,7 @@ new class extends Component {
                         Isi 0 untuk menghapus potongan.
                     </p>
                 @endif
-                <x-input wire:model="discountAmount" label="Total potongan (Rp)" type="number" min="0" step="500" required />
+                <x-money-input wire:model="discountAmount" label="Total potongan" required />
                 <x-input wire:model="discountReason" label="Alasan" placeholder="contoh: Beasiswa yatim" required />
                 <div class="modal-action">
                     <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Batal</button>

@@ -69,7 +69,7 @@ class ArrearsReport extends Report
 
         return new ReportTable(
             title: static::title(),
-            subtitle: $filters->levelLabel().($category ? ' · '.$category->name : '').' · Jatuh tempo s.d. '.$filters->until->translatedFormat('j F Y'),
+            subtitle: $filters->levelLabel().($category ? ', '.$category->name : '').', jatuh tempo s.d. '.$filters->until->translatedFormat('j F Y'),
             columns: [
                 self::column('level', 'Jenjang'),
                 self::column('classroom', 'Kelas'),

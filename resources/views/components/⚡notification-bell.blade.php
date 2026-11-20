@@ -48,12 +48,12 @@ new class extends Component {
         <div class="indicator">
             <x-icon name="bell" />
             @if ($this->unreadCount > 0)
-                <span class="indicator-item badge badge-xs badge-error">{{ $this->unreadCount > 9 ? '9+' : $this->unreadCount }}</span>
+                <span class="indicator-item badge badge-xs badge-error border-0 px-1 font-semibold">{{ $this->unreadCount > 9 ? '9+' : $this->unreadCount }}</span>
             @endif
         </div>
     </summary>
 
-    <div class="dropdown-content z-30 mt-1 w-80 rounded-box bg-base-100 p-2 shadow-lg ring-1 ring-base-300">
+    <div class="dropdown-content z-30 mt-2 w-80 rounded-box bg-base-100 p-2 text-base-content shadow-lg ring-1 ring-base-300 max-sm:fixed max-sm:inset-x-3 max-sm:top-16 max-sm:w-auto">
         <div class="flex items-center justify-between px-2 py-1">
             <span class="font-semibold">Notifikasi</span>
             @if ($this->unreadCount > 0)

@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Enums\TransactionCategoryType;
 use App\Models\ActivityLog;
 use App\Models\TransactionCategory;
@@ -7,6 +8,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 
 new #[Title('Kategori Transaksi')] class extends Component {
@@ -70,6 +72,23 @@ new #[Title('Kategori Transaksi')] class extends Component {
         $this->dispatch('toast', variant: 'success', text: 'Kategori disimpan.');
         unset($this->categories);
     }
+    public function delete(TransactionCategory $category, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-payment-settings');
+
+        try {
+            $deleteUnusedRecord->handle($category);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        ActivityLog::record('transaction_category.deleted', 'Menghapus kategori '.$category->name, properties: ['transaction_category_id' => $category->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Kategori dihapus.');
+        unset($this->categories);
+    }
 }; ?>
 
 <div>
@@ -92,6 +111,17 @@ new #[Title('Kategori Transaksi')] class extends Component {
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" wire:click="edit({{ $category->id }})" aria-label="Ubah {{ $category->name }}">
                                     <x-icon name="pencil-square" class="size-4" />
                                 </button>
+                                <x-confirm-button
+                                    :action="'delete('.$category->id.')'"
+                                    title="Hapus kategori"
+                                    :message="'Hapus '.$category->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                                    confirm-label="Hapus"
+                                    danger
+                                    class="btn btn-xs btn-ghost btn-square text-error"
+                                    aria-label="Hapus {{ $category->name }}"
+                                >
+                                    <x-icon name="trash" class="size-4" />
+                                </x-confirm-button>
                             </li>
                         @endforeach
                     </ul>

@@ -83,7 +83,7 @@ class PaymentRecapReport extends Report
 
         return new ReportTable(
             title: static::title(),
-            subtitle: $filters->levelLabel().' · Tahun ajaran '.($filters->academicYear->name ?? '-'),
+            subtitle: $filters->levelLabel().', tahun ajaran '.($filters->academicYear->name ?? '-'),
             columns: [
                 self::column('level', 'Jenjang'),
                 self::column('category', 'Kategori'),

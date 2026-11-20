@@ -151,7 +151,8 @@ new #[Title('Tagihan')] class extends Component {
 <div>
     <x-page-header
         title="Tagihan"
-        :description="($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang').' · Pantau tagihan dan pembayaran lima kategori.'"
+        :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang')]"
+        description="Pantau tagihan dan pembayaran lima kategori."
     >
         <x-slot:actions>
             <select class="select select-sm w-40" wire:model.live="academicYearId" aria-label="Tahun ajaran">
@@ -189,7 +190,7 @@ new #[Title('Tagihan')] class extends Component {
                     <div class="font-mono text-sm">{{ \Illuminate\Support\Number::rupiah($total) }}</div>
                     <div class="text-xs text-base-content/60">Diterima</div>
                     <div class="font-mono text-sm text-success">{{ \Illuminate\Support\Number::rupiah($received) }}</div>
-                    <div class="text-xs text-base-content/60">Tunggakan · {{ $row->outstanding_students ?? 0 }} siswa</div>
+                    <div class="text-xs text-base-content/60">Tunggakan, {{ $row->outstanding_students ?? 0 }} siswa</div>
                     <div class="font-mono text-sm text-error">{{ \Illuminate\Support\Number::rupiah($total - $received) }}</div>
                     <progress class="progress progress-primary mt-1" value="{{ $received }}" max="{{ max($total, 1) }}"></progress>
                 </div>
@@ -217,7 +218,7 @@ new #[Title('Tagihan')] class extends Component {
         <select class="select select-sm w-44" wire:model.live="classroomId" aria-label="Kelas">
             <option value="">Semua kelas</option>
             @foreach ($this->classrooms as $classroom)
-                <option value="{{ $classroom->id }}" wire:key="filter-classroom-{{ $classroom->id }}">{{ $classroom->level->code }} · {{ $classroom->name }}</option>
+                <option value="{{ $classroom->id }}" wire:key="filter-classroom-{{ $classroom->id }}">{{ $classroom->name }} ({{ $classroom->level->code }})</option>
             @endforeach
         </select>
     </div>

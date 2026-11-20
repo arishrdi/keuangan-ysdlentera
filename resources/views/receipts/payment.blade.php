@@ -42,7 +42,7 @@
             <td class="right">
                 <div class="title">KUITANSI</div>
                 <div><strong>{{ $payment->receipt_number }}</strong></div>
-                <div class="muted">{{ $payment->level->name }}{{ $payment->level->address ? ' · '.$payment->level->address : '' }}{{ $payment->level->phone ? ' · '.$payment->level->phone : '' }}</div>
+                <div class="muted">{{ $payment->level->name }}{{ $payment->level->address ? ', '.$payment->level->address : '' }}{{ $payment->level->phone ? ', telp. '.$payment->level->phone : '' }}</div>
             </td>
         </tr>
     </table>
@@ -58,7 +58,7 @@
             <td class="muted">NIS / Kelas</td>
             <td>: {{ $payment->student->nis ?? '-' }} / {{ $classroom?->name ?? '-' }} ({{ $payment->level->name }})</td>
             <td class="muted">Metode</td>
-            <td>: {{ $payment->method->label() }}{{ $payment->channel ? ' · '.$payment->channel->name : '' }}</td>
+            <td>: {{ $payment->method->label() }}{{ $payment->channel ? ' ('.$payment->channel->name.')' : '' }}</td>
         </tr>
     </table>
 
@@ -102,7 +102,7 @@
             <td class="right">
                 Diverifikasi oleh<br>
                 <strong>{{ $payment->verifier?->name ?? '-' }}</strong><br>
-                <span class="muted">Bendahara · {{ $payment->verified_at?->translatedFormat('j F Y H:i') }}</span>
+                <span class="muted">Bendahara, {{ $payment->verified_at?->translatedFormat('j F Y H:i') }}</span>
             </td>
         </tr>
     </table>

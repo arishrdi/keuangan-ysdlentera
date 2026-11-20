@@ -126,10 +126,10 @@ new class extends Component {
             @else
                 <button type="button" class="btn btn-sm" wire:click="$set('showRecoveryCodes', true)">Lihat kode pemulihan</button>
             @endif
-            <button type="button" class="btn btn-sm btn-error btn-outline" wire:click="disable" wire:confirm="Nonaktifkan verifikasi dua langkah?">Nonaktifkan</button>
+            <x-confirm-button action="disable()" title="Nonaktifkan verifikasi dua langkah" message="Akun Anda hanya akan dilindungi password." confirm-label="Nonaktifkan" danger class="btn btn-sm btn-error btn-outline">Nonaktifkan</x-confirm-button>
         </div>
     @elseif ($this->isConfirming)
-        <div class="space-y-4 rounded-box border border-base-300 p-4">
+        <div class="space-y-4 rounded-box border border-base-300 bg-base-100 p-4">
             <p class="text-sm">1. Pindai kode QR ini dengan aplikasi autentikator, atau masukkan kunci pengaturan secara manual.</p>
             <div class="w-fit rounded-box bg-white p-3">{!! auth()->user()->twoFactorQrCodeSvg() !!}</div>
             <p class="text-sm">Kunci pengaturan: <span class="font-mono">{{ decrypt(auth()->user()->two_factor_secret) }}</span></p>

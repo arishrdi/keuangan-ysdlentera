@@ -1,5 +1,6 @@
 <?php
 
+use App\Actions\DeleteUnusedRecord;
 use App\Enums\Gender;
 use App\Enums\StudentStatus;
 use App\Models\AcademicYear;
@@ -15,6 +16,7 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -255,12 +257,29 @@ new #[Title('Data Siswa')] class extends Component {
         $this->dispatch('toast', variant: 'success', text: 'Data siswa disimpan.');
         unset($this->students);
     }
+    public function delete(Student $student, DeleteUnusedRecord $deleteUnusedRecord): void
+    {
+        $this->authorize('manage-master-data');
+
+        try {
+            $deleteUnusedRecord->handle($student);
+        } catch (ValidationException $exception) {
+            $this->dispatch('toast', variant: 'error', text: $exception->getMessage());
+
+            return;
+        }
+
+        ActivityLog::record('student.deleted', 'Menghapus data siswa '.$student->name, properties: ['student_id' => $student->id]);
+
+        $this->dispatch('toast', variant: 'success', text: 'Data siswa dihapus.');
+        unset($this->students);
+    }
 }; ?>
 
 <div>
     <x-page-header
         :title="$this->canManage ? 'Data Siswa' : 'Data Sekolah'"
-        :description="($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang').' · Tahun ajaran '.($this->academicYear?->name ?? '-')"
+        :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang'), 'Tahun ajaran '.($this->academicYear?->name ?? '-')]"
     >
         <x-slot:actions>
             @if ($this->canManage)
@@ -285,7 +304,7 @@ new #[Title('Data Siswa')] class extends Component {
         <select class="select select-sm w-48" wire:model.live="classroomFilter" aria-label="Kelas">
             <option value="">Semua kelas</option>
             @foreach ($this->classroomsFor($this->activeLevel?->id) as $classroom)
-                <option value="{{ $classroom->id }}" wire:key="filter-classroom-{{ $classroom->id }}">{{ $classroom->level->code }} · {{ $classroom->name }}</option>
+                <option value="{{ $classroom->id }}" wire:key="filter-classroom-{{ $classroom->id }}">{{ $classroom->name }} ({{ $classroom->level->code }})</option>
             @endforeach
         </select>
     </div>
@@ -321,6 +340,17 @@ new #[Title('Data Siswa')] class extends Component {
                                 <button type="button" class="btn btn-sm btn-ghost btn-square" wire:click="edit({{ $student->id }})" aria-label="Ubah">
                                     <x-icon name="pencil-square" class="size-4" />
                                 </button>
+                                <x-confirm-button
+                                    :action="'delete('.$student->id.')'"
+                                    title="Hapus data siswa"
+                                    :message="'Hapus '.$student->name.'? Data yang sudah dipakai di transaksi tidak bisa dihapus, nonaktifkan saja.'"
+                                    confirm-label="Hapus"
+                                    danger
+                                    class="btn btn-sm btn-ghost btn-square text-error"
+                                    aria-label="Hapus {{ $student->name }}"
+                                >
+                                    <x-icon name="trash" class="size-4" />
+                                </x-confirm-button>
                             @endif
                         </td>
                     </tr>

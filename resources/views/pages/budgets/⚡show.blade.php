@@ -107,7 +107,8 @@ new class extends Component {
 
     <x-page-header
         :title="$proposal->title"
-        :description="($proposal->number ?? 'Draft').' · '.$proposal->level->name.' · '.$proposal->category->name.' · Diajukan oleh '.($proposal->creator?->name ?? '-').($proposal->submitted_at ? ' pada '.$proposal->submitted_at->translatedFormat('j F Y H:i') : '')"
+        :meta="[$proposal->number ?? 'Draft', $proposal->level->name, $proposal->category->name]"
+        :description="'Diajukan oleh '.($proposal->creator?->name ?? '-').($proposal->submitted_at ? ' pada '.$proposal->submitted_at->translatedFormat('j F Y H:i') : '')"
     >
         <x-slot:actions>
             <span class="badge badge-lg {{ $proposal->status->badgeClass() }}">{{ $proposal->status->label() }}</span>
@@ -115,7 +116,7 @@ new class extends Component {
                 <a href="{{ route('budgets.edit', $proposal) }}" class="btn btn-sm" wire:navigate>
                     <x-icon name="pencil-square" class="size-4" /> Ubah
                 </a>
-                <button type="button" class="btn btn-sm btn-primary" wire:click="submit" wire:confirm="Kirim pengajuan ke Kepala Sekolah?">Kirim pengajuan</button>
+                <x-confirm-button action="submit()" title="Kirim pengajuan" message="Kirim pengajuan ke Kepala Sekolah? Setelah dikirim, pengajuan tidak bisa diubah kecuali diminta revisi." confirm-label="Kirim" class="btn btn-sm btn-primary">Kirim pengajuan</x-confirm-button>
             @endif
         </x-slot:actions>
     </x-page-header>
@@ -144,7 +145,7 @@ new class extends Component {
                                     </tr>
                                 @endforeach
                                 <tr class="font-semibold">
-                                    <td colspan="4" class="text-end">TOTAL</td>
+                                    <td colspan="4" class="text-end">Total</td>
                                     <td class="text-end font-mono">{{ \Illuminate\Support\Number::rupiah($proposal->total_amount) }}</td>
                                 </tr>
                             </tbody>
@@ -182,12 +183,12 @@ new class extends Component {
                                 </div>
                             @endif
                         </div>
-                        <div class="grid grid-cols-3 gap-2 text-sm">
-                            <div><div class="text-base-content/60">Disetujui</div><div class="font-mono text-lg">{{ \Illuminate\Support\Number::rupiah($proposal->total_amount) }}</div></div>
-                            <div><div class="text-base-content/60">Terpakai</div><div class="font-mono text-lg text-error">{{ \Illuminate\Support\Number::rupiah($realized) }}</div></div>
-                            <div><div class="text-base-content/60">Sisa</div><div class="font-mono text-lg text-success">{{ \Illuminate\Support\Number::rupiah($proposal->total_amount - $realized) }}</div></div>
-                        </div>
-                        <progress class="progress progress-primary" value="{{ $realized }}" max="{{ max($proposal->total_amount, 1) }}"></progress>
+                        <dl class="mt-1 grid grid-cols-3 gap-4">
+                            <div><dt class="kpi-label">Disetujui</dt><dd class="mt-1 text-lg font-semibold">{{ \Illuminate\Support\Number::rupiah($proposal->total_amount) }}</dd></div>
+                            <div><dt class="kpi-label">Terpakai</dt><dd class="mt-1 text-lg font-semibold">{{ \Illuminate\Support\Number::rupiah($realized) }}</dd></div>
+                            <div><dt class="kpi-label">Sisa</dt><dd class="mt-1 text-lg font-semibold text-primary">{{ \Illuminate\Support\Number::rupiah($proposal->total_amount - $realized) }}</dd></div>
+                        </dl>
+                        <progress class="progress progress-primary h-2.5" value="{{ $realized }}" max="{{ max($proposal->total_amount, 1) }}"></progress>
                         <table class="table table-sm mt-2">
                             <thead><tr><th>Tanggal</th><th>No.</th><th>Keterangan</th><th>Akun</th><th class="text-end">Jumlah</th></tr></thead>
                             <tbody>
@@ -216,9 +217,9 @@ new class extends Component {
                         <h2 class="card-title text-base">Keputusan {{ $proposal->status === \App\Enums\BudgetStatus::AwaitingPrincipal ? 'tahap 1 (Kepala Sekolah)' : 'tahap 2 (Yayasan)' }}</h2>
                         <x-textarea wire:model="notes" label="Catatan (wajib bila menolak atau minta revisi)" rows="3" />
                         <div class="grid gap-2">
-                            <button type="button" class="btn btn-primary" wire:click="decide('disetujui')" wire:confirm="Setujui pengajuan ini?">Setujui</button>
+                            <x-confirm-button action="decide('disetujui')" title="Setujui pengajuan" message="Setujui pengajuan anggaran ini?" confirm-label="Setujui" class="btn btn-primary">Setujui</x-confirm-button>
                             <button type="button" class="btn btn-info btn-outline" wire:click="decide('minta_revisi')">Minta revisi</button>
-                            <button type="button" class="btn btn-error btn-outline" wire:click="decide('ditolak')" wire:confirm="Tolak pengajuan ini? Penolakan bersifat final.">Tolak</button>
+                            <x-confirm-button action="decide('ditolak')" title="Tolak pengajuan" message="Penolakan bersifat final dan pengajuan tidak bisa dikirim ulang." confirm-label="Tolak" danger class="btn btn-error btn-outline">Tolak</x-confirm-button>
                         </div>
                     </div>
                 </div>
@@ -231,11 +232,11 @@ new class extends Component {
                         @forelse ($proposal->approvals as $approval)
                             <li wire:key="approval-{{ $approval->id }}">
                                 @unless ($loop->first)<hr />@endunless
-                                <div class="timeline-middle"><span class="badge badge-xs {{ $approval->action->badgeClass() }}"></span></div>
+                                <div class="timeline-middle"><span class="block size-3 rounded-full border-2 border-primary bg-base-100"></span></div>
                                 <div class="timeline-end mb-4 text-sm">
-                                    <div class="font-medium">{{ $approval->action->label() }}{{ $approval->stage ? ' · tahap '.$approval->stage : '' }}</div>
+                                    <div class="font-medium">{{ $approval->action->label() }}{{ $approval->stage ? ' (tahap '.$approval->stage.')' : '' }}</div>
                                     <div class="text-base-content/70">{{ $approval->user?->name ?? 'Sistem' }}{{ $approval->role ? ' ('.$approval->role->label().')' : '' }}</div>
-                                    <div class="text-xs text-base-content/50">{{ $approval->created_at->translatedFormat('j M Y H:i') }} · {{ \Illuminate\Support\Number::rupiah($approval->total_amount) }}</div>
+                                    <div class="text-xs text-base-content/50">{{ $approval->created_at->translatedFormat('j M Y H:i') }}, nilai {{ \Illuminate\Support\Number::rupiah($approval->total_amount) }}</div>
                                     @if ($approval->notes)
                                         <div class="mt-1 rounded-box bg-base-200 p-2">{{ $approval->notes }}</div>
                                     @endif

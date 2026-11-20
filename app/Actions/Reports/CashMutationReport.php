@@ -84,7 +84,7 @@ class CashMutationReport extends Report
 
         return new ReportTable(
             title: static::title(),
-            subtitle: $filters->levelLabel().' · '.($account->name ?? 'Semua akun').' · '.$filters->periodLabel(),
+            subtitle: $filters->levelLabel().', '.($account->name ?? 'Semua akun').', '.$filters->periodLabel(),
             columns: [
                 self::column('date', 'Tanggal', 'date'),
                 self::column('number', 'No. transaksi'),
