@@ -29,6 +29,11 @@
                         {{ $slot }}
                     </div>
                 </div>
+
+                <p class="text-xs text-base-content/60">
+                    Powered by
+                    <a href="https://itsolutionwebs.com/" target="_blank" rel="noopener" class="link link-hover font-medium text-base-content/80">IT Solution Yogyakarta</a>
+                </p>
             </main>
         </div>
 
