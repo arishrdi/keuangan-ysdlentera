@@ -56,7 +56,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
     }
 
     /**
-     * Bank accounts of the level chosen in the form.
+     * Bank accounts the level chosen in the form can use: its own and the shared ones.
      *
      * @return Collection<int, CashAccount>
      */
@@ -64,7 +64,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
     public function bankAccounts(): Collection
     {
         return CashAccount::query()
-            ->where('level_id', $this->level_id)
+            ->where(fn ($query) => $query->where('level_id', $this->level_id)->orWhereNull('level_id'))
             ->where('type', CashAccountType::Bank)
             ->active()
             ->orderBy('name')
@@ -134,7 +134,9 @@ new #[Title('Rekening & QRIS')] class extends Component {
             'level_id' => ['required', 'integer', Rule::exists(Level::class, 'id')],
             'cash_account_id' => [
                 'required', 'integer',
-                Rule::exists(CashAccount::class, 'id')->where('level_id', $this->level_id)->where('type', CashAccountType::Bank->value),
+                Rule::exists(CashAccount::class, 'id')
+                    ->where(fn ($query) => $query->where('level_id', $this->level_id)->orWhereNull('level_id'))
+                    ->where('type', CashAccountType::Bank->value),
             ],
             'type' => ['required', Rule::enum(PaymentChannelType::class)],
             'name' => ['required', 'string', 'max:100'],
@@ -283,7 +285,7 @@ new #[Title('Rekening & QRIS')] class extends Component {
             <x-input wire:model="name" label="Nama tampilan" placeholder="contoh: BSI SD Lentera" required />
             <x-select wire:model="cash_account_id" label="Uang masuk ke akun kas" placeholder="Pilih rekening bank di Akun Kas" required>
                 @foreach ($this->bankAccounts as $bankAccount)
-                    <option value="{{ $bankAccount->id }}" wire:key="bank-account-{{ $bankAccount->id }}">{{ $bankAccount->name }} ({{ $bankAccount->account_number }})</option>
+                    <option value="{{ $bankAccount->id }}" wire:key="bank-account-{{ $bankAccount->id }}">{{ $bankAccount->name }} ({{ $bankAccount->account_number }}){{ $bankAccount->isShared() ? ' — bersama' : '' }}</option>
                 @endforeach
             </x-select>
             @if ($level_id && $this->bankAccounts->isEmpty())

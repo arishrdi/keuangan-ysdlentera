@@ -124,7 +124,7 @@ new class extends Component {
     {
         return CashAccount::query()
             ->with('level')
-            ->when(Level::active(), fn ($query, Level $level) => $query->whereBelongsTo($level))
+            ->when(Level::active(), fn ($query, Level $level) => $query->availableTo($level))
             ->orderBy('level_id')
             ->orderBy('name')
             ->get();

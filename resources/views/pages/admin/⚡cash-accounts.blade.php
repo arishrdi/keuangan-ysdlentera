@@ -50,7 +50,7 @@ new #[Title('Akun Kas')] class extends Component {
     {
         return CashAccount::query()
             ->with('level')
-            ->when($this->activeLevel, fn ($query, Level $level) => $query->whereBelongsTo($level))
+            ->when($this->activeLevel, fn ($query, Level $level) => $query->availableTo($level))
             ->orderBy(Level::query()->select('sort_order')->whereColumn('levels.id', 'cash_accounts.level_id'))
             ->orderBy('type', 'desc')
             ->orderBy('name')
@@ -94,9 +94,9 @@ new #[Title('Akun Kas')] class extends Component {
         $existing = $this->editingId ? CashAccount::query()->findOrFail($this->editingId) : null;
 
         $validated = $this->validate([
-            'level_id' => [$existing ? 'nullable' : 'required', 'integer', Rule::exists(Level::class, 'id')],
+            'level_id' => ['nullable', 'integer', Rule::exists(Level::class, 'id')],
             'type' => ['required', Rule::enum(CashAccountType::class)],
-            'name' => ['required', 'string', 'max:100', Rule::unique(CashAccount::class)->where('level_id', $existing->level_id ?? $this->level_id)->ignore($this->editingId)],
+            'name' => ['required', 'string', 'max:100', Rule::unique(CashAccount::class)->where(fn ($query) => $existing ? $query->where('level_id', $existing->level_id) : $query->where('level_id', $this->level_id))->ignore($this->editingId)],
             'bank_name' => [Rule::requiredIf($isBank), 'nullable', 'string', 'max:100'],
             'account_number' => [Rule::requiredIf($isBank), 'nullable', 'string', 'max:50'],
             'is_active' => ['boolean'],
@@ -109,7 +109,7 @@ new #[Title('Akun Kas')] class extends Component {
         ]);
 
         $account = CashAccount::query()->updateOrCreate(['id' => $this->editingId], [
-            'level_id' => $existing->level_id ?? $validated['level_id'],
+            'level_id' => $existing ? $existing->level_id : $validated['level_id'],
             'type' => $existing->type ?? $validated['type'],
             'name' => $validated['name'],
             'bank_name' => $isBank ? $validated['bank_name'] : null,
@@ -143,7 +143,7 @@ new #[Title('Akun Kas')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Akun Kas" description="Tempat penyimpanan uang setiap jenjang: kas tunai dan rekening bank. Saldo dihitung otomatis dari transaksi.">
+    <x-page-header title="Akun Kas" description="Tempat penyimpanan uang: kas tunai dan rekening bank, milik satu jenjang atau dipakai bersama semua jenjang. Saldo dihitung otomatis dari transaksi.">
         <x-slot:actions>
             <button type="button" class="btn btn-primary" wire:click="create">
                 <x-icon name="plus" class="size-4" /> Tambah akun
@@ -166,7 +166,7 @@ new #[Title('Akun Kas')] class extends Component {
             <tbody>
                 @forelse ($this->accounts as $account)
                     <tr wire:key="account-{{ $account->id }}">
-                        <td><span class="badge badge-outline">{{ $account->level->code }}</span></td>
+                        <td><span @class(['badge', 'badge-outline' => ! $account->isShared(), 'badge-info badge-soft' => $account->isShared()])>{{ $account->isShared() ? 'Semua jenjang' : $account->level->code }}</span></td>
                         <td class="font-medium">{{ $account->name }}</td>
                         <td>{{ $account->type->label() }}</td>
                         <td class="text-sm">
@@ -212,7 +212,8 @@ new #[Title('Akun Kas')] class extends Component {
         <form wire:submit="save" class="space-y-4">
             @unless ($editingId)
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-select wire:model="level_id" label="Jenjang" placeholder="Pilih jenjang" required>
+                    <x-select wire:model.live="level_id" label="Jenjang">
+                        <option value="">Semua jenjang (akun bersama)</option>
                         @foreach ($this->levels as $level)
                             <option value="{{ $level->id }}" wire:key="form-level-{{ $level->id }}">{{ $level->name }}</option>
                         @endforeach
@@ -224,6 +225,9 @@ new #[Title('Akun Kas')] class extends Component {
                     </x-select>
                 </div>
             @endunless
+            @if (! $editingId && $level_id === null)
+                <p class="text-xs text-base-content/60">Akun bersama dipakai semua jenjang. Saldonya tetap dicatat terpisah per jenjang, dan tiap jenjang hanya bisa memakai saldonya sendiri.</p>
+            @endif
             <x-input wire:model="name" label="Nama akun" placeholder="contoh: BSI SD Lentera" required />
             @if ($type === 'bank')
                 <div class="grid gap-4 sm:grid-cols-2">

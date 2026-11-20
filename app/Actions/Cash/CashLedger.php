@@ -13,6 +13,7 @@ use App\Models\BudgetProposal;
 use App\Models\CashAccount;
 use App\Models\CashTransaction;
 use App\Models\DocumentSequence;
+use App\Models\Level;
 use App\Models\Payment;
 use App\Models\TransactionCategory;
 use App\Models\User;
@@ -27,7 +28,9 @@ use Illuminate\Validation\ValidationException;
  * Writes every movement of money into the cash book of a level.
  *
  * Entries are append-only: cancelling adds an opposite entry, so balances can always be traced.
- * Money can only leave an account when its balance covers the amount.
+ * Every entry belongs to a level. A shared account (no level) holds a separate balance for each level,
+ * and money can only leave an account when the level's balance in it covers the amount.
+ * The level defaults to the account's own level and must be given for a shared account.
  */
 class CashLedger
 {
@@ -42,10 +45,11 @@ class CashLedger
         string $description,
         ?string $counterparty = null,
         ?UploadedFile $proof = null,
+        ?Level $level = null,
     ): CashTransaction {
         $this->ensureCategoryType($category, TransactionCategoryType::Income);
 
-        return $this->record($account, CashTransactionType::Income, CashDirection::In, $amount, $transactedOn, $description, [
+        return $this->record($account, $this->levelFor($account, $level), CashTransactionType::Income, CashDirection::In, $amount, $transactedOn, $description, [
             'counterparty' => $counterparty,
             'transaction_category_id' => $category->id,
             'proof_path' => $proof?->store('cash-proofs', 'local'),
@@ -65,14 +69,16 @@ class CashLedger
         ?string $counterparty = null,
         ?UploadedFile $proof = null,
         ?BudgetProposal $budget = null,
+        ?Level $level = null,
     ): CashTransaction {
         $this->ensureCategoryType($category, TransactionCategoryType::Expense);
+        $level = $this->levelFor($account, $level);
 
-        return DB::transaction(function () use ($account, $category, $amount, $transactedOn, $description, $counterparty, $proof, $budget): CashTransaction {
+        return DB::transaction(function () use ($account, $level, $category, $amount, $transactedOn, $description, $counterparty, $proof, $budget): CashTransaction {
             if ($budget !== null) {
                 $budget = BudgetProposal::query()->lockForUpdate()->findOrFail($budget->id);
 
-                if (! $budget->status->acceptsExpenses() || $budget->level_id !== $account->level_id) {
+                if (! $budget->status->acceptsExpenses() || $budget->level_id !== $level->id) {
                     throw ValidationException::withMessages(['budgetId' => 'Anggaran harus sudah disetujui dan berasal dari jenjang yang sama.']);
                 }
 
@@ -83,7 +89,7 @@ class CashLedger
                 }
             }
 
-            $expense = $this->record($account, CashTransactionType::Expense, CashDirection::Out, $amount, $transactedOn, $description, [
+            $expense = $this->record($account, $level, CashTransactionType::Expense, CashDirection::Out, $amount, $transactedOn, $description, [
                 'counterparty' => $counterparty,
                 'transaction_category_id' => $category->id,
                 'budget_proposal_id' => $budget?->id,
@@ -106,19 +112,21 @@ class CashLedger
     }
 
     /**
-     * Move money between two accounts of the same level, e.g. depositing cash into the bank.
+     * Move a level's money between two of its accounts, e.g. depositing cash into the (shared) bank account.
      *
      * @return array{out: CashTransaction, in: CashTransaction}
      */
-    public function transfer(CashAccount $from, CashAccount $to, int $amount, CarbonInterface $transactedOn, string $description): array
+    public function transfer(CashAccount $from, CashAccount $to, int $amount, CarbonInterface $transactedOn, string $description, ?Level $level = null): array
     {
-        if ($from->is($to) || $from->level_id !== $to->level_id) {
+        $level ??= $from->level ?? $to->level;
+
+        if ($level === null || $from->is($to) || ! $from->isAvailableTo($level) || ! $to->isAvailableTo($level)) {
             throw ValidationException::withMessages(['toAccountId' => 'Pilih akun tujuan lain pada jenjang yang sama.']);
         }
 
-        return DB::transaction(function () use ($from, $to, $amount, $transactedOn, $description): array {
-            $out = $this->record($from, CashTransactionType::Transfer, CashDirection::Out, $amount, $transactedOn, $description.' (ke '.$to->name.')');
-            $in = $this->record($to, CashTransactionType::Transfer, CashDirection::In, $amount, $transactedOn, $description.' (dari '.$from->name.')', [
+        return DB::transaction(function () use ($from, $to, $level, $amount, $transactedOn, $description): array {
+            $out = $this->record($from, $level, CashTransactionType::Transfer, CashDirection::Out, $amount, $transactedOn, $description.' (ke '.$to->name.')');
+            $in = $this->record($to, $level, CashTransactionType::Transfer, CashDirection::In, $amount, $transactedOn, $description.' (dari '.$from->name.')', [
                 'related_transaction_id' => $out->id,
             ]);
 
@@ -129,11 +137,15 @@ class CashLedger
     }
 
     /**
-     * Record the balance an account already held when the system went live. Allowed once per account.
+     * Record the balance an account already held when the system went live.
+     * Allowed once per account, or once per level for a shared account.
      */
-    public function recordOpeningBalance(CashAccount $account, int $amount, CarbonInterface $transactedOn): CashTransaction
+    public function recordOpeningBalance(CashAccount $account, int $amount, CarbonInterface $transactedOn, ?Level $level = null): CashTransaction
     {
+        $level = $this->levelFor($account, $level);
+
         $alreadyRecorded = $account->transactions()
+            ->whereBelongsTo($level)
             ->where('type', CashTransactionType::OpeningBalance)
             ->effective()
             ->exists();
@@ -142,7 +154,7 @@ class CashLedger
             throw ValidationException::withMessages(['openingAmount' => 'Saldo awal akun ini sudah pernah dicatat.']);
         }
 
-        return $this->record($account, CashTransactionType::OpeningBalance, CashDirection::In, $amount, $transactedOn, 'Saldo awal '.$account->name);
+        return $this->record($account, $level, CashTransactionType::OpeningBalance, CashDirection::In, $amount, $transactedOn, 'Saldo awal '.$account->name.($account->isShared() ? ' ('.$level->name.')' : ''));
     }
 
     /**
@@ -156,13 +168,13 @@ class CashLedger
             ? CashAccount::cashBoxFor($payment->level)
             : $payment->channel?->cashAccount;
 
-        if ($account === null) {
+        if ($account === null || ! $account->isAvailableTo($payment->level)) {
             throw ValidationException::withMessages([
                 'payment' => 'Rekening/QRIS tujuan belum dihubungkan ke akun kas. Minta admin menghubungkannya di menu Rekening & QRIS.',
             ]);
         }
 
-        return $this->record($account, CashTransactionType::StudentPayment, CashDirection::In, $payment->amount, $payment->paid_on, 'Pembayaran '.$payment->student->name.' ('.$payment->receipt_number.')', [
+        return $this->record($account, $payment->level, CashTransactionType::StudentPayment, CashDirection::In, $payment->amount, $payment->paid_on, 'Pembayaran '.$payment->student->name.' ('.$payment->receipt_number.')', [
             'payment_id' => $payment->id,
             'counterparty' => $payment->student->name,
         ], log: false);
@@ -188,7 +200,7 @@ class CashLedger
                 : [$transaction];
 
             foreach ($legs as $leg) {
-                $this->record($leg->cashAccount, $leg->type, $leg->direction->opposite(), $leg->amount, now(), 'Pembatalan '.$leg->number.': '.$reason, [
+                $this->record($leg->cashAccount, $leg->level, $leg->type, $leg->direction->opposite(), $leg->amount, now(), 'Pembatalan '.$leg->number.': '.$reason, [
                     'reversal_of_id' => $leg->id,
                     'transaction_category_id' => $leg->transaction_category_id,
                     'payment_id' => $leg->payment_id,
@@ -207,6 +219,7 @@ class CashLedger
      */
     private function record(
         CashAccount $account,
+        Level $level,
         CashTransactionType $type,
         CashDirection $direction,
         int $amount,
@@ -220,19 +233,24 @@ class CashLedger
             throw ValidationException::withMessages(['amount' => 'Nominal harus lebih dari nol.']);
         }
 
-        return DB::transaction(function () use ($account, $type, $direction, $amount, $transactedOn, $description, $attributes, $log, $errorKey): CashTransaction {
-            $account = CashAccount::query()->with('level')->lockForUpdate()->findOrFail($account->id);
+        if (! $account->isAvailableTo($level)) {
+            throw ValidationException::withMessages([$errorKey => 'Akun '.$account->name.' bukan milik jenjang '.$level->name.'.']);
+        }
 
-            if ($direction === CashDirection::Out && $account->balance() < $amount) {
+        return DB::transaction(function () use ($account, $level, $type, $direction, $amount, $transactedOn, $description, $attributes, $log, $errorKey): CashTransaction {
+            $account = CashAccount::query()->lockForUpdate()->findOrFail($account->id);
+            $balance = $account->balance(level: $level);
+
+            if ($direction === CashDirection::Out && $balance < $amount) {
                 throw ValidationException::withMessages([
-                    $errorKey => 'Saldo '.$account->name.' tidak cukup (saldo '.Number::rupiah($account->balance()).').',
+                    $errorKey => 'Saldo '.$account->name.($account->isShared() ? ' bagian '.$level->name : '').' tidak cukup (saldo '.Number::rupiah($balance).').',
                 ]);
             }
 
             $transaction = CashTransaction::query()->create([
                 ...$attributes,
-                'number' => DocumentSequence::next(DocumentSequence::CASH_TRANSACTION, $account->level, $transactedOn->year),
-                'level_id' => $account->level_id,
+                'number' => DocumentSequence::next(DocumentSequence::CASH_TRANSACTION, $level, $transactedOn->year),
+                'level_id' => $level->id,
                 'cash_account_id' => $account->id,
                 'type' => $type,
                 'direction' => $direction,
@@ -248,6 +266,20 @@ class CashLedger
 
             return $transaction;
         });
+    }
+
+    /**
+     * The level an entry belongs to: the given one, or the account's own level.
+     */
+    private function levelFor(CashAccount $account, ?Level $level): Level
+    {
+        $level ??= $account->level;
+
+        if ($level === null) {
+            throw ValidationException::withMessages(['accountId' => 'Pilih jenjang untuk transaksi pada akun bersama.']);
+        }
+
+        return $level;
     }
 
     private function ensureCategoryType(TransactionCategory $category, TransactionCategoryType $type): void

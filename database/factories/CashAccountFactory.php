@@ -27,6 +27,14 @@ class CashAccountFactory extends Factory
         ];
     }
 
+    /**
+     * An account shared by every level.
+     */
+    public function shared(): static
+    {
+        return $this->state(fn () => ['level_id' => null]);
+    }
+
     public function bank(): static
     {
         return $this->state(fn () => [

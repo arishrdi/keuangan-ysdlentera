@@ -188,7 +188,7 @@ new class extends Component {
             return new Collection;
         }
 
-        return CashAccount::query()->whereBelongsTo($this->activeLevel)->active()->withBalance()->orderBy('type', 'desc')->orderBy('name')->get();
+        return CashAccount::query()->availableTo($this->activeLevel)->active()->withBalance($this->activeLevel)->orderBy('type', 'desc')->orderBy('name')->get();
     }
 
     public function create(): void
@@ -245,8 +245,8 @@ new class extends Component {
         ];
 
         $entry = $this->isIncome
-            ? $ledger->recordIncome(...$arguments)
-            : $ledger->recordExpense(...$arguments, budget: $this->budgets->firstWhere('id', $this->budgetId));
+            ? $ledger->recordIncome(...$arguments, level: $this->activeLevel)
+            : $ledger->recordExpense(...$arguments, budget: $this->budgets->firstWhere('id', $this->budgetId), level: $this->activeLevel);
 
         $this->dispatch('close-modal', name: 'entry-form-'.$this->kind);
         $this->dispatch('toast', variant: 'success', text: ($this->isIncome ? 'Pemasukan' : 'Pengeluaran').' '.$entry->number.' dicatat.');

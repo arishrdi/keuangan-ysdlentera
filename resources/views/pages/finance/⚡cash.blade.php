@@ -66,8 +66,8 @@ new #[Title('Kas')] class extends Component {
     {
         return CashAccount::query()
             ->with('level')
-            ->withBalance()
-            ->when($this->activeLevel, fn ($query, Level $level) => $query->whereBelongsTo($level))
+            ->withBalance($this->activeLevel)
+            ->when($this->activeLevel, fn ($query, Level $level) => $query->availableTo($level))
             ->orderBy(Level::query()->select('sort_order')->whereColumn('levels.id', 'cash_accounts.level_id'))
             ->orderBy('type', 'desc')
             ->orderBy('name')
@@ -90,6 +90,7 @@ new #[Title('Kas')] class extends Component {
 
         return (int) CashTransaction::query()
             ->whereIn('cash_account_id', $accountIds)
+            ->when($this->activeLevel, fn ($query, Level $level) => $query->whereBelongsTo($level))
             ->whereDate('transacted_on', '<', $this->from)
             ->selectRaw('coalesce(sum(case when direction = ? then amount else -amount end), 0) as balance', [CashDirection::In->value])
             ->value('balance');
@@ -109,6 +110,7 @@ new #[Title('Kas')] class extends Component {
         return CashTransaction::query()
             ->with(['cashAccount', 'category'])
             ->whereIn('cash_account_id', $accountIds)
+            ->when($this->activeLevel, fn ($query, Level $level) => $query->whereBelongsTo($level))
             ->whereDate('transacted_on', '>=', $this->from)
             ->whereDate('transacted_on', '<=', $this->until)
             ->orderBy('transacted_on')
@@ -167,6 +169,7 @@ new #[Title('Kas')] class extends Component {
                 $this->transferAmount,
                 Carbon::parse($this->transferDate),
                 $this->transferNote,
+                $this->activeLevel,
             );
         } catch (\Illuminate\Validation\ValidationException $exception) {
             $this->addError('transferAmount', collect($exception->errors())->flatten()->first());
@@ -182,6 +185,13 @@ new #[Title('Kas')] class extends Component {
     public function openOpening(int $accountId): void
     {
         $this->authorize('manage-cash');
+
+        if ($this->activeLevel === null && $this->accounts->firstWhere('id', $accountId)?->isShared()) {
+            $this->dispatch('toast', variant: 'warning', text: 'Pilih jenjang di kanan atas untuk mengisi saldo awal akun bersama.');
+
+            return;
+        }
+
         $this->resetValidation();
 
         $this->openingAccountId = $accountId;
@@ -201,7 +211,7 @@ new #[Title('Kas')] class extends Component {
             'openingDate' => ['required', 'date', 'before_or_equal:today'],
         ], [], ['openingAmount' => 'saldo awal', 'openingDate' => 'tanggal']);
 
-        $ledger->recordOpeningBalance($this->accounts->firstWhere('id', $this->openingAccountId), $this->openingAmount, Carbon::parse($this->openingDate));
+        $ledger->recordOpeningBalance($this->accounts->firstWhere('id', $this->openingAccountId), $this->openingAmount, Carbon::parse($this->openingDate), $this->activeLevel);
 
         $this->dispatch('close-modal', name: 'opening-balance');
         $this->dispatch('toast', variant: 'success', text: 'Saldo awal dicatat.');
@@ -236,16 +246,19 @@ new #[Title('Kas')] class extends Component {
                 <div class="card-body gap-1 p-4">
                     <div class="flex items-center justify-between gap-2">
                         <span class="text-sm font-medium">{{ $account->name }}</span>
-                        <span class="badge badge-outline badge-xs">{{ $account->level->code }}</span>
+                        <span @class(['badge badge-xs', 'badge-outline' => ! $account->isShared(), 'badge-info badge-soft' => $account->isShared()])>{{ $account->ownerLabel() }}</span>
                     </div>
                     <div @class(['text-xl font-semibold', 'text-error' => $account->balance < 0])>{{ \Illuminate\Support\Number::rupiah($account->balance) }}</div>
+                    @if ($account->isShared())
+                        <div class="text-xs text-base-content/60">{{ $this->activeLevel ? 'Bagian '.$this->activeLevel->name : 'Total semua jenjang' }}</div>
+                    @endif
                     <div class="flex items-center gap-1.5 text-xs text-base-content/60">
                         {{ $account->type->label() }}
                         @unless ($account->is_active)
                             <span class="badge badge-ghost badge-xs">nonaktif</span>
                         @endunless
                     </div>
-                    @if ($this->canManage && (int) $account->balance === 0)
+                    @if ($this->canManage && (int) $account->balance === 0 && ($this->activeLevel || ! $account->isShared()))
                         <span class="link link-primary text-xs" wire:click.stop="openOpening({{ $account->id }})">Isi saldo awal</span>
                     @endif
                 </div>

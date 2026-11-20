@@ -16,9 +16,10 @@ use Illuminate\Support\Carbon;
 
 /**
  * A place where a level keeps its money: the cash box or a bank account.
+ * An account without a level is shared by every level; each level still has its own balance in it.
  *
  * @property int $id
- * @property int $level_id
+ * @property int|null $level_id
  * @property CashAccountType $type
  * @property string $name
  * @property string|null $bank_name
@@ -70,28 +71,59 @@ class CashAccount extends Model
     }
 
     /**
-     * Add the current balance as `balance`.
+     * Accounts a level can use: its own and the shared ones.
      *
      * @param  Builder<self>  $query
      */
-    public function scopeWithBalance(Builder $query): void
+    public function scopeAvailableTo(Builder $query, Level $level): void
+    {
+        $query->where(fn (Builder $query) => $query->whereBelongsTo($level)->orWhereNull('level_id'));
+    }
+
+    /**
+     * Add the current balance as `balance`, limited to one level's share when a level is given.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeWithBalance(Builder $query, ?Level $level = null): void
     {
         $query->addSelect([
             'balance' => CashTransaction::query()
                 ->selectRaw('coalesce(sum(case when direction = ? then amount else -amount end), 0)', [CashDirection::In->value])
-                ->whereColumn('cash_transactions.cash_account_id', 'cash_accounts.id'),
+                ->whereColumn('cash_transactions.cash_account_id', 'cash_accounts.id')
+                ->when($level, fn ($query, Level $level) => $query->where('cash_transactions.level_id', $level->id)),
         ]);
     }
 
     /**
-     * The balance after every mutation up to and including the given date.
+     * The balance after every mutation up to and including the given date,
+     * limited to one level's share when a level is given.
      */
-    public function balance(?CarbonInterface $until = null): int
+    public function balance(?CarbonInterface $until = null, ?Level $level = null): int
     {
         return (int) $this->transactions()
             ->when($until, fn ($query, CarbonInterface $until) => $query->whereDate('transacted_on', '<=', $until->toDateString()))
+            ->when($level, fn ($query, Level $level) => $query->where('level_id', $level->id))
             ->selectRaw('coalesce(sum(case when direction = ? then amount else -amount end), 0) as balance', [CashDirection::In->value])
             ->value('balance');
+    }
+
+    public function isShared(): bool
+    {
+        return $this->level_id === null;
+    }
+
+    public function isAvailableTo(Level $level): bool
+    {
+        return $this->isShared() || $this->level_id === $level->id;
+    }
+
+    /**
+     * Short owner label: the level code, or "Bersama" for a shared account.
+     */
+    public function ownerLabel(): string
+    {
+        return $this->level->code ?? 'Bersama';
     }
 
     /**

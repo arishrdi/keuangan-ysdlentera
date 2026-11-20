@@ -115,8 +115,8 @@ class StaffDashboard
     public function cashBalance(): int
     {
         return (int) CashAccount::query()
-            ->when($this->level, fn (Builder $query) => $query->whereBelongsTo($this->level))
-            ->withBalance()
+            ->when($this->level, fn (Builder $query) => $query->availableTo($this->level))
+            ->withBalance($this->level)
             ->get()
             ->sum('balance');
     }

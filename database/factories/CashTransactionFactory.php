@@ -6,6 +6,7 @@ use App\Enums\CashDirection;
 use App\Enums\CashTransactionType;
 use App\Models\CashAccount;
 use App\Models\CashTransaction;
+use App\Models\Level;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -25,7 +26,7 @@ class CashTransactionFactory extends Factory
         return [
             'number' => 'TRX/TEST/'.fake()->unique()->numerify('######'),
             'cash_account_id' => CashAccount::factory(),
-            'level_id' => fn (array $attributes) => CashAccount::query()->findOrFail((int) $attributes['cash_account_id'])->level_id,
+            'level_id' => fn (array $attributes) => CashAccount::query()->findOrFail((int) $attributes['cash_account_id'])->level_id ?? Level::factory(),
             'type' => CashTransactionType::Income,
             'direction' => CashDirection::In,
             'amount' => fake()->numberBetween(10, 500) * 1_000,

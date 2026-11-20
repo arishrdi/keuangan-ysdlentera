@@ -34,12 +34,13 @@ class CashMutationReport extends Report
     public function build(ReportFilters $filters): ReportTable
     {
         $accountIds = CashAccount::query()
-            ->when($filters->level, fn ($query, $level) => $query->whereBelongsTo($level))
+            ->when($filters->level, fn ($query, $level) => $query->availableTo($level))
             ->when($filters->accountId, fn ($query, int $accountId) => $query->whereKey($accountId))
             ->pluck('id');
 
         $opening = (int) CashTransaction::query()
             ->whereIn('cash_account_id', $accountIds)
+            ->when($filters->level, fn ($query, $level) => $query->whereBelongsTo($level))
             ->whereDate('transacted_on', '<', $filters->from->toDateString())
             ->selectRaw('coalesce(sum(case when direction = ? then amount else -amount end), 0) as balance', [CashDirection::In->value])
             ->value('balance');
@@ -47,6 +48,7 @@ class CashMutationReport extends Report
         $mutations = CashTransaction::query()
             ->with(['cashAccount', 'category'])
             ->whereIn('cash_account_id', $accountIds)
+            ->when($filters->level, fn ($query, $level) => $query->whereBelongsTo($level))
             ->whereBetween('transacted_on', [$filters->from->toDateString(), $filters->until->toDateString()])
             ->orderBy('transacted_on')
             ->orderBy('id')
