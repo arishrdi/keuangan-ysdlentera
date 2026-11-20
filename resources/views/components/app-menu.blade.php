@@ -23,6 +23,7 @@
                 ['label' => 'Kas', 'route' => 'finance.cash', 'icon' => 'wallet', 'active' => 'finance.cash', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Tabungan', 'route' => 'savings.index', 'icon' => 'banknotes', 'active' => 'savings.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Anggaran', 'route' => 'budgets.index', 'icon' => 'clipboard-document-check', 'active' => 'budgets.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
+                ['label' => 'Laporan', 'route' => 'reports.index', 'icon' => 'chart-pie', 'active' => 'reports.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Tagihan', 'route' => 'guardian.bills', 'icon' => 'document-text', 'active' => 'guardian.bills', 'roles' => [Role::Guardian]],
                 ['label' => 'Cicilan', 'route' => 'guardian.installments', 'icon' => 'chart-pie', 'active' => 'guardian.installments', 'roles' => [Role::Guardian]],
                 ['label' => 'Tabungan', 'route' => 'guardian.savings', 'icon' => 'wallet', 'active' => 'guardian.savings', 'roles' => [Role::Guardian]],

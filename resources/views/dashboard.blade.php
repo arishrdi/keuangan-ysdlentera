@@ -134,6 +134,40 @@
                 </div>
             </div>
 
+            @if ($activeLevel === null && $user->hasRole(Role::Foundation, Role::Principal))
+                @php
+                    $consolidatedFilters = \App\Actions\Reports\ReportFilters::fromArray([], null);
+                    $consolidated = app(\App\Actions\Reports\ConsolidatedReport::class)->build($consolidatedFilters);
+                @endphp
+
+                <div class="mt-6 overflow-x-auto rounded-box border border-base-300">
+                    <div class="flex items-center justify-between px-4 pt-4">
+                        <h2 class="font-semibold">Perbandingan per jenjang · {{ now()->translatedFormat('F Y') }}</h2>
+                        @if ($user->hasRole(Role::Foundation))
+                            <a href="{{ route('reports.show', 'konsolidasi') }}" class="link text-sm" wire:navigate>Laporan konsolidasi</a>
+                        @endif
+                    </div>
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                @foreach ($consolidated->columns as $column)
+                                    <th @class(['text-end' => $column['type'] !== 'text'])>{{ $column['label'] }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach ([...$consolidated->rows, $consolidated->totals] as $row)
+                                <tr @class(['bg-base-200 font-semibold' => $loop->last])>
+                                    @foreach ($consolidated->columns as $column)
+                                        <td @class(['text-end font-mono' => $column['type'] !== 'text'])>{{ \App\Actions\Reports\ReportExporter::display($row[$column['key']] ?? null, $column['type']) }}</td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+
             @php
                 $budgets = \App\Models\BudgetProposal::query()
                     ->where('status', '!=', \App\Enums\BudgetStatus::Draft)

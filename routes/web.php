@@ -6,6 +6,7 @@ use App\Http\Controllers\CashTransactionProofController;
 use App\Http\Controllers\PaymentChannelQrisController;
 use App\Http\Controllers\PaymentProofController;
 use App\Http\Controllers\PaymentReceiptController;
+use App\Http\Controllers\ReportExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');
@@ -39,6 +40,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('kas/{cashTransaction}/bukti', CashTransactionProofController::class)->name('finance.proof');
             Route::livewire('tabungan', 'pages::savings.index')->name('savings.index');
             Route::livewire('tabungan/siswa/{student}', 'pages::savings.student')->name('savings.student');
+            Route::livewire('laporan', 'pages::reports.index')->name('reports.index');
+            Route::livewire('laporan/{report}', 'pages::reports.show')->name('reports.show');
+            Route::get('laporan/{report}/{format}', ReportExportController::class)->whereIn('format', ['excel', 'pdf'])->name('reports.export');
             Route::livewire('anggaran', 'pages::budgets.index')->name('budgets.index');
             Route::livewire('anggaran/{budgetProposal}', 'pages::budgets.show')->whereNumber('budgetProposal')->name('budgets.show');
             Route::get('anggaran/{budgetProposal}/lampiran/{attachment}', BudgetAttachmentController::class)->name('budgets.attachment');
