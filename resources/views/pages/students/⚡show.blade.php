@@ -56,6 +56,8 @@ new class extends Component {
                 <h2 class="card-title text-base">Identitas siswa</h2>
                 <dl class="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                     <div><dt class="text-base-content/60">NISN</dt><dd>{{ $student->nisn ?? '-' }}</dd></div>
+                    <div><dt class="text-base-content/60">NIK</dt><dd class="font-mono">{{ $student->nik ?? '-' }}</dd></div>
+                    <div><dt class="text-base-content/60">No. KK</dt><dd class="font-mono">{{ $student->family_card_number ?? '-' }}</dd></div>
                     <div><dt class="text-base-content/60">Jenis kelamin</dt><dd>{{ $student->gender->label() }}</dd></div>
                     <div><dt class="text-base-content/60">Tempat, tanggal lahir</dt><dd>{{ $student->birth_place ?? '-' }}, {{ $student->birth_date?->translatedFormat('j F Y') ?? '-' }}</dd></div>
                     <div><dt class="text-base-content/60">Perubahan status</dt><dd>{{ $student->status_changed_on?->translatedFormat('j F Y') ?? '-' }}</dd></div>

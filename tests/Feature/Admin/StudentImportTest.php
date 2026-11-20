@@ -59,6 +59,29 @@ it('previews rows and marks invalid and already registered ones', function () {
         ->and($rows[3]['messages'])->toContain('Kelas 9Z tidak ada di jenjang SD pada tahun ajaran aktif.');
 });
 
+it('imports NIK and family card number and rejects a NIK used twice', function () {
+    ['year' => $year] = importSetup();
+    Student::factory()->create(['nik' => '3471010101180009']);
+
+    $importer = app(ImportStudents::class);
+    $rows = $importer->preview(importFile([
+        ['nis' => '2001', 'nik' => '3471010101180001', 'no_kk' => '3471010101100002', 'nama_siswa' => 'Kakak', 'jenis_kelamin' => 'L', 'jenjang' => 'SD'],
+        ['nis' => '2002', 'nik' => '3471010101180001', 'nama_siswa' => 'NIK Ganda', 'jenis_kelamin' => 'P', 'jenjang' => 'SD'],
+        ['nis' => '2003', 'nik' => '3471010101180009', 'nama_siswa' => 'NIK Terdaftar', 'jenis_kelamin' => 'P', 'jenjang' => 'SD'],
+        ['nis' => '2004', 'nik' => '123', 'nama_siswa' => 'NIK Pendek', 'jenis_kelamin' => 'P', 'jenjang' => 'SD'],
+    ]), $year);
+
+    expect(array_column($rows, 'status'))->toBe(['baru', 'error', 'error', 'error'])
+        ->and($rows[1]['messages'])->toContain('NIK ganda di dalam file.')
+        ->and($rows[2]['messages'])->toContain('NIK sudah terdaftar.');
+
+    $importer->import($rows, $year);
+
+    expect(Student::query()->where('nis', '2001')->sole())
+        ->nik->toBe('3471010101180001')
+        ->family_card_number->toBe('3471010101100002');
+});
+
 it('imports valid rows, places students in classes and creates or links guardians', function () {
     ['year' => $year, 'classroom' => $classroom] = importSetup();
     $existingGuardian = User::factory()->guardian()->create(['phone' => '081200000001']);

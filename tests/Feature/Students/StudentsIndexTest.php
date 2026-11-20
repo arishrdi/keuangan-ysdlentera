@@ -58,6 +58,38 @@ it('rejects a duplicate NIS', function () {
         ->assertHasErrors(['nis' => 'unique']);
 });
 
+it('saves NIK and family card number, letting siblings share one KK', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $sibling = Student::factory()->create(['family_card_number' => '3471010101100002']);
+
+    Livewire::test('pages::students.index')
+        ->set('name', 'Adik Kandung')
+        ->set('level_id', $sibling->level_id)
+        ->set('nik', '3471010101180001')
+        ->set('family_card_number', '3471010101100002')
+        ->set('gender', Gender::Female->value)
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Student::query()->where('name', 'Adik Kandung')->sole())
+        ->nik->toBe('3471010101180001')
+        ->family_card_number->toBe('3471010101100002');
+});
+
+it('rejects a duplicate NIK and numbers that are not 16 digits', function () {
+    $this->actingAs(User::factory()->admin()->create());
+    $existing = Student::factory()->create(['nik' => '3471010101180001']);
+
+    Livewire::test('pages::students.index')
+        ->set('name', 'NIK Kembar')
+        ->set('level_id', $existing->level_id)
+        ->set('nik', '3471010101180001')
+        ->set('family_card_number', '12345')
+        ->set('gender', Gender::Male->value)
+        ->call('save')
+        ->assertHasErrors(['nik' => 'unique', 'family_card_number' => 'digits']);
+});
+
 it('records the date when a student leaves', function () {
     $this->travelTo('2026-11-19');
     $this->actingAs(User::factory()->admin()->create());

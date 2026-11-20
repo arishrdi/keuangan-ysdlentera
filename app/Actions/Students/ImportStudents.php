@@ -41,7 +41,7 @@ class ImportStudents
      * @var array<int, string>
      */
     public const array COLUMNS = [
-        'nis', 'nisn', 'nama_siswa', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'jenjang', 'kelas', 'alamat',
+        'nis', 'nisn', 'nik', 'no_kk', 'nama_siswa', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'jenjang', 'kelas', 'alamat',
         'nama_wali', 'hubungan_wali', 'hp_wali', 'email_wali',
     ];
 
@@ -60,7 +60,7 @@ class ImportStudents
         SimpleExcelWriter::create($path)
             ->setHeaderStyle((new Style)->withFontBold(true)->withBackgroundColor('E8F6EE'))
             ->addRow(array_combine(self::COLUMNS, [
-                '2026001', '0123456789', 'Contoh Nama Siswa', 'L', 'Bandung', '2018-05-17', 'SD', '1A', 'Jl. Merdeka No. 1',
+                '2026001', '0123456789', '3471010101180001', '3471010101100002', 'Contoh Nama Siswa', 'L', 'Bandung', '2018-05-17', 'SD', '1A', 'Jl. Merdeka No. 1',
                 'Contoh Nama Wali', 'Ayah', '081234567890', 'wali@example.com',
             ]))
             ->close();
@@ -79,6 +79,7 @@ class ImportStudents
         $classrooms = Classroom::query()->whereBelongsTo($academicYear)->get();
         $existingNis = Student::query()->whereNotNull('nis')->pluck('nis')->flip();
         $seenNis = [];
+        $seenNik = [];
         $rows = [];
 
         foreach (SimpleExcelReader::create($path, 'xlsx')->headersToSnakeCase()->getRows() as $index => $raw) {
@@ -98,6 +99,15 @@ class ImportStudents
 
             if ($data['nis'] !== null) {
                 $seenNis[$data['nis']] = true;
+            }
+
+            if ($data['nik'] !== null && isset($seenNik[$data['nik']])) {
+                $status = self::STATUS_INVALID;
+                $messages[] = 'NIK ganda di dalam file.';
+            }
+
+            if ($data['nik'] !== null) {
+                $seenNik[$data['nik']] = true;
             }
 
             $rows[] = ['line' => $index + 2, 'data' => $data, 'status' => $status, 'messages' => $messages];
@@ -136,6 +146,8 @@ class ImportStudents
                     'level_id' => $level->id,
                     'nis' => $data['nis'],
                     'nisn' => $data['nisn'],
+                    'nik' => $data['nik'],
+                    'family_card_number' => $data['no_kk'],
                     'name' => $data['nama_siswa'],
                     'gender' => Gender::from(Str::upper((string) $data['jenis_kelamin'])),
                     'birth_place' => $data['tempat_lahir'],
@@ -268,6 +280,8 @@ class ImportStudents
             'jenis_kelamin' => ['required', 'in:L,P,l,p'],
             'jenjang' => ['required', 'in:'.implode(',', [...$levelCodes, ...array_map('strtolower', $levelCodes)])],
             'nisn' => ['nullable', 'digits_between:5,20'],
+            'nik' => ['nullable', 'digits:16'],
+            'no_kk' => ['nullable', 'digits:16'],
             'hp_wali' => ['nullable', 'string', 'min:9', 'max:20'],
             'nama_wali' => ['nullable', 'string', 'max:255'],
             'hubungan_wali' => ['nullable', 'in:'.implode(',', self::RELATIONSHIPS)],
@@ -278,6 +292,8 @@ class ImportStudents
             'hubungan_wali.in' => 'Hubungan wali harus Ayah, Ibu, atau Wali.',
         ], [
             'nama_siswa' => 'nama siswa',
+            'nik' => 'NIK',
+            'no_kk' => 'No. KK',
             'jenis_kelamin' => 'jenis kelamin',
             'hp_wali' => 'HP wali',
             'nama_wali' => 'nama wali',
@@ -296,6 +312,10 @@ class ImportStudents
 
         if ($data['nisn'] !== null && Student::query()->where('nisn', $data['nisn'])->exists()) {
             $messages[] = 'NISN sudah terdaftar.';
+        }
+
+        if ($data['nik'] !== null && Student::query()->where('nik', $data['nik'])->exists()) {
+            $messages[] = 'NIK sudah terdaftar.';
         }
 
         if ($data['hp_wali'] !== null) {

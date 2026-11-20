@@ -40,6 +40,10 @@ new #[Title('Data Siswa')] class extends Component {
 
     public string $nisn = '';
 
+    public string $nik = '';
+
+    public string $family_card_number = '';
+
     public string $name = '';
 
     public string $gender = '';
@@ -128,7 +132,8 @@ new #[Title('Data Siswa')] class extends Component {
             ->when($this->search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->where('name', 'like', '%'.$this->search.'%')
                 ->orWhere('nis', 'like', '%'.$this->search.'%')
-                ->orWhere('nisn', 'like', '%'.$this->search.'%')))
+                ->orWhere('nisn', 'like', '%'.$this->search.'%')
+                ->orWhere('nik', 'like', '%'.$this->search.'%')))
             ->orderBy('name')
             ->paginate(25);
     }
@@ -138,7 +143,7 @@ new #[Title('Data Siswa')] class extends Component {
         $this->authorize('manage-master-data');
 
         $this->resetValidation();
-        $this->reset('editingId', 'nis', 'nisn', 'name', 'gender', 'birth_place', 'birth_date', 'address', 'status_changed_on');
+        $this->reset('editingId', 'nis', 'nisn', 'nik', 'family_card_number', 'name', 'gender', 'birth_place', 'birth_date', 'address', 'status_changed_on');
         $this->level_id = $this->activeLevel?->id;
         $this->classroom_id = $this->classroomFilter;
         $this->student_status = StudentStatus::Active->value;
@@ -155,6 +160,8 @@ new #[Title('Data Siswa')] class extends Component {
         $this->level_id = $student->level_id;
         $this->nis = (string) $student->nis;
         $this->nisn = (string) $student->nisn;
+        $this->nik = (string) $student->nik;
+        $this->family_card_number = (string) $student->family_card_number;
         $this->name = $student->name;
         $this->gender = $student->gender->value;
         $this->birth_place = (string) $student->birth_place;
@@ -180,6 +187,8 @@ new #[Title('Data Siswa')] class extends Component {
             'level_id' => ['required', 'integer', Rule::exists(Level::class, 'id')],
             'nis' => ['nullable', 'string', 'max:30', Rule::unique(Student::class)->ignore($this->editingId)],
             'nisn' => ['nullable', 'digits_between:5,20', Rule::unique(Student::class)->ignore($this->editingId)],
+            'nik' => ['nullable', 'digits:16', Rule::unique(Student::class)->ignore($this->editingId)],
+            'family_card_number' => ['nullable', 'digits:16'],
             'name' => ['required', 'string', 'max:255'],
             'gender' => ['required', Rule::enum(Gender::class)],
             'birth_place' => ['nullable', 'string', 'max:100'],
@@ -220,6 +229,8 @@ new #[Title('Data Siswa')] class extends Component {
                 'level_id' => $validated['level_id'],
                 'nis' => $validated['nis'] ?: null,
                 'nisn' => $validated['nisn'] ?: null,
+                'nik' => $validated['nik'] ?: null,
+                'family_card_number' => $validated['family_card_number'] ?: null,
                 'name' => $validated['name'],
                 'gender' => $validated['gender'],
                 'birth_place' => $validated['birth_place'] ?: null,
@@ -382,6 +393,8 @@ new #[Title('Data Siswa')] class extends Component {
                     </x-select>
                     <x-input wire:model="nis" label="NIS" />
                     <x-input wire:model="nisn" label="NISN" inputmode="numeric" />
+                    <x-input wire:model="nik" label="NIK" inputmode="numeric" maxlength="16" />
+                    <x-input wire:model="family_card_number" label="No. KK" inputmode="numeric" maxlength="16" />
                     <x-select wire:model="gender" label="Jenis kelamin" placeholder="Pilih" required>
                         @foreach (\App\Enums\Gender::cases() as $genderOption)
                             <option value="{{ $genderOption->value }}" wire:key="gender-{{ $genderOption->value }}">{{ $genderOption->label() }}</option>

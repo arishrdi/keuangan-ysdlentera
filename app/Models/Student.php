@@ -23,6 +23,8 @@ use Illuminate\Validation\ValidationException;
  * @property int $level_id
  * @property string|null $nis
  * @property string|null $nisn
+ * @property string|null $nik
+ * @property string|null $family_card_number
  * @property string $name
  * @property Gender $gender
  * @property string|null $birth_place
@@ -34,7 +36,7 @@ use Illuminate\Validation\ValidationException;
  * @property Carbon|null $updated_at
  * @property-read int|null $savings_balance
  */
-#[Fillable(['level_id', 'nis', 'nisn', 'name', 'gender', 'birth_place', 'birth_date', 'address', 'status', 'status_changed_on'])]
+#[Fillable(['level_id', 'nis', 'nisn', 'nik', 'family_card_number', 'name', 'gender', 'birth_place', 'birth_date', 'address', 'status', 'status_changed_on'])]
 class Student extends Model
 {
     /** @use HasFactory<StudentFactory> */

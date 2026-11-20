@@ -157,6 +157,7 @@ new #[Title('Import Siswa')] class extends Component {
                     <li>Jenjang diisi kode: PAUD, SD, atau SMP. Kelas diisi nama kelas pada tahun ajaran aktif.</li>
                     <li>Wali dicocokkan berdasarkan No. HP. Wali yang belum ada akan dibuatkan akun dengan password acak.</li>
                     <li>Siswa dengan NIS yang sudah terdaftar dilewati, jadi file yang sama aman diunggah ulang.</li>
+                    <li>NIK dan No. KK diisi 16 digit. Format kolomnya sebagai <em>Text</em> di Excel, karena angka 16 digit akan dibulatkan Excel.</li>
                 </ol>
                 <fieldset class="fieldset p-0">
                     <legend class="fieldset-legend pt-0">File Excel (.xlsx, maks. 5 MB)</legend>
