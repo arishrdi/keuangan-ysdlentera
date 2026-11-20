@@ -14,7 +14,7 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the data every installation needs: levels, an active academic year and the first admin.
+     * Seed the data every installation needs: levels, categories, an active academic year and the staff accounts.
      */
     public function run(): void
     {
@@ -31,11 +31,18 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
-        User::query()->firstOrCreate(['username' => 'admin'], [
-            'name' => 'Administrator',
-            'password' => 'password',
-            'role' => Role::Admin,
-        ]);
+        foreach ([
+            ['admin', 'Administrator', Role::Admin],
+            ['yayasan', 'Ketua Yayasan', Role::Foundation],
+            ['kepsek', 'Kepala Sekolah', Role::Principal],
+            ['bendahara', 'Bendahara', Role::Treasurer],
+        ] as [$username, $name, $role]) {
+            User::query()->firstOrCreate(['username' => $username], [
+                'name' => $name,
+                'password' => 'password',
+                'role' => $role,
+            ]);
+        }
 
         if (app()->isLocal()) {
             $this->call(DemoSeeder::class);

@@ -30,22 +30,11 @@ use Illuminate\Support\Facades\Auth;
 class DemoSeeder extends Seeder
 {
     /**
-     * Seed demo accounts, classrooms and students for local development.
+     * Seed demo classrooms, students, guardians and transactions for local development.
+     * Staff accounts come from DatabaseSeeder.
      */
     public function run(): void
     {
-        foreach ([
-            ['yayasan', 'Ketua Yayasan', Role::Foundation],
-            ['kepsek', 'Kepala Sekolah', Role::Principal],
-            ['bendahara', 'Bendahara', Role::Treasurer],
-        ] as [$username, $name, $role]) {
-            User::query()->firstOrCreate(['username' => $username], [
-                'name' => $name,
-                'password' => 'password',
-                'role' => $role,
-            ]);
-        }
-
         $academicYear = AcademicYear::current();
 
         if ($academicYear === null || Student::query()->exists()) {
