@@ -106,8 +106,8 @@ new #[Title('Kategori Transaksi')] class extends Component {
                     </div>
                     <ul class="divide-y divide-base-300">
                         @foreach ($this->categories->where('type', $categoryType) as $category)
-                            <li class="flex items-center justify-between py-2" wire:key="category-{{ $category->id }}">
-                                <span @class(['text-base-content/50 line-through' => ! $category->is_active])>{{ $category->name }}</span>
+                            <li class="flex items-center gap-1 py-2" wire:key="category-{{ $category->id }}">
+                                <span @class(['min-w-0 flex-1', 'text-base-content/50 line-through' => ! $category->is_active])>{{ $category->name }}</span>
                                 <button type="button" class="btn btn-xs btn-ghost btn-square" wire:click="edit({{ $category->id }})" aria-label="Ubah {{ $category->name }}">
                                     <x-icon name="pencil-square" class="size-4" />
                                 </button>

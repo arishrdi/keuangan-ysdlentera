@@ -20,11 +20,6 @@
                         <label for="app-sidebar" class="btn btn-ghost btn-square drawer-button lg:hidden" aria-label="Buka menu">
                             <x-icon name="bars-2" />
                         </label>
-
-                        @if (filled($title ?? null) && ! $isGuardian)
-                            <span class="truncate text-sm font-semibold lg:hidden">{{ $title }}</span>
-                        @endif
-
                         @if ($isGuardian)
                             <img src="{{ asset('images/logo-reverse.png') }}" alt="{{ config('app.name') }}" class="h-8 w-auto lg:hidden" />
                         @endif
