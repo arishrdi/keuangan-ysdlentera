@@ -67,7 +67,7 @@
     >
         <span class="text-base-content/60">Rp</span>
         <input
-            {{ $attributes->whereDoesntStartWith('wire:model')->except(['id', 'type', 'min', 'max', 'step', 'class'])->class('text-end tabular-nums') }}
+            {{ $attributes->whereDoesntStartWith('wire:model')->except(['id', 'type', 'min', 'max', 'step', 'class'])->class('tabular-nums') }}
             id="{{ $id }}"
             type="text"
             inputmode="numeric"

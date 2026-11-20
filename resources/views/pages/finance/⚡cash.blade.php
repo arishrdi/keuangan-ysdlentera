@@ -301,11 +301,17 @@ new #[Title('Kas')] class extends Component {
         <x-modal name="transfer" title="Transfer antar akun">
             <form wire:submit="transfer" class="space-y-4">
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-select wire:model="fromAccountId" label="Dari akun" required>
-                        @foreach ($this->accounts->where('is_active', true) as $account)
-                            <option value="{{ $account->id }}" wire:key="from-{{ $account->id }}">{{ $account->name }} ({{ \Illuminate\Support\Number::rupiah($account->balance) }})</option>
-                        @endforeach
-                    </x-select>
+                    {{-- The option shows only the account name; the source account's balance sits under the field. --}}
+                    <div x-data="{ balances: @js($this->accounts->where('is_active', true)->mapWithKeys(fn ($account) => [$account->id => \Illuminate\Support\Number::rupiah($account->balance)])) }">
+                        <x-select wire:model="fromAccountId" label="Dari akun" required>
+                            @foreach ($this->accounts->where('is_active', true) as $account)
+                                <option value="{{ $account->id }}" wire:key="from-{{ $account->id }}">{{ $account->name }}</option>
+                            @endforeach
+                        </x-select>
+                        <p class="mt-1 text-xs text-base-content/60" x-show="balances[$wire.fromAccountId]" x-cloak>
+                            Saldo saat ini <span class="font-semibold text-base-content" x-text="balances[$wire.fromAccountId]"></span>
+                        </p>
+                    </div>
                     <x-select wire:model="toAccountId" label="Ke akun" required>
                         @foreach ($this->accounts->where('is_active', true) as $account)
                             <option value="{{ $account->id }}" wire:key="to-{{ $account->id }}">{{ $account->name }}</option>

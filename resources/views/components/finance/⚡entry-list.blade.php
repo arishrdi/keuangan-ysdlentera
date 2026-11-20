@@ -376,11 +376,17 @@ new class extends Component {
         <x-modal :name="'entry-form-'.$kind" :title="'Catat '.($this->isIncome ? 'pemasukan' : 'pengeluaran').' '.($this->activeLevel?->name ?? '')">
             <form wire:submit="save" class="space-y-4">
                 <div class="grid gap-4 sm:grid-cols-2">
-                    <x-select wire:model="accountId" :label="$this->isIncome ? 'Masuk ke akun' : 'Dibayar dari akun'" placeholder="Pilih akun" required>
-                        @foreach ($this->accounts as $account)
-                            <option value="{{ $account->id }}" wire:key="account-{{ $account->id }}">{{ $account->name }} (saldo {{ \Illuminate\Support\Number::rupiah($account->balance) }})</option>
-                        @endforeach
-                    </x-select>
+                    {{-- The option shows only the account name; the chosen account's balance sits under the field. --}}
+                    <div x-data="{ balances: @js($this->accounts->mapWithKeys(fn ($account) => [$account->id => \Illuminate\Support\Number::rupiah($account->balance)])) }">
+                        <x-select wire:model="accountId" :label="$this->isIncome ? 'Masuk ke akun' : 'Dibayar dari akun'" placeholder="Pilih akun" required>
+                            @foreach ($this->accounts as $account)
+                                <option value="{{ $account->id }}" wire:key="account-{{ $account->id }}">{{ $account->name }}</option>
+                            @endforeach
+                        </x-select>
+                        <p class="mt-1 text-xs text-base-content/60" x-show="balances[$wire.accountId]" x-cloak>
+                            Saldo saat ini <span class="font-semibold text-base-content" x-text="balances[$wire.accountId]"></span>
+                        </p>
+                    </div>
                     <x-select wire:model="categoryId" label="Kategori" placeholder="Pilih kategori" required>
                         @foreach ($this->categories->where('is_active', true) as $category)
                             <option value="{{ $category->id }}" wire:key="form-category-{{ $category->id }}">{{ $category->name }}</option>
@@ -390,11 +396,18 @@ new class extends Component {
                     <x-input wire:model="transactedOn" label="Tanggal" type="date" required />
                 </div>
                 @unless ($this->isIncome)
-                    <x-select wire:model="budgetId" label="Realisasi dari anggaran (opsional)" placeholder="Tidak terkait anggaran">
-                        @foreach ($this->budgets as $budget)
-                            <option value="{{ $budget->id }}" wire:key="budget-{{ $budget->id }}">{{ $budget->title }} ({{ $budget->number }}, sisa {{ \Illuminate\Support\Number::rupiah($budget->total_amount - (int) $budget->realized_amount) }})</option>
-                        @endforeach
-                    </x-select>
+                    {{-- The option shows only the budget title; its number and remaining amount sit under the field. --}}
+                    <div x-data="{ budgets: @js($this->budgets->mapWithKeys(fn ($budget) => [$budget->id => ['number' => $budget->number, 'remaining' => \Illuminate\Support\Number::rupiah($budget->total_amount - (int) $budget->realized_amount)]])) }">
+                        <x-select wire:model="budgetId" label="Realisasi dari anggaran (opsional)" placeholder="Tidak terkait anggaran">
+                            @foreach ($this->budgets as $budget)
+                                <option value="{{ $budget->id }}" wire:key="budget-{{ $budget->id }}">{{ $budget->title }}</option>
+                            @endforeach
+                        </x-select>
+                        <p class="mt-1 text-xs text-base-content/60" x-show="budgets[$wire.budgetId]" x-cloak>
+                            <span x-text="budgets[$wire.budgetId]?.number"></span>, sisa anggaran
+                            <span class="font-semibold text-base-content" x-text="budgets[$wire.budgetId]?.remaining"></span>
+                        </p>
+                    </div>
                 @endunless
                 <x-input wire:model="counterparty" :label="$this->isIncome ? 'Diterima dari (opsional)' : 'Dibayarkan kepada (opsional)'" />
                 <x-input wire:model="description" label="Keterangan" required />

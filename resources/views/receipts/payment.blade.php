@@ -3,7 +3,7 @@
     use Illuminate\Support\Number;
 
     /** @var \App\Models\Payment $payment */
-    $logo = 'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/logo.png')));
+    $logo = 'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/logo-print.png')));
     $classroom = $payment->student->enrollments()->with('classroom')->latest('id')->first()?->classroom;
     $isCancelled = $payment->status === PaymentStatus::Cancelled;
 @endphp

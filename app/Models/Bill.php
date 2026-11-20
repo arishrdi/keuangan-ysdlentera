@@ -160,6 +160,16 @@ class Bill extends Model
         return max(0, $this->remainingAmount() - (int) $pending);
     }
 
+    /**
+     * Whether any payment awaiting verification or already verified is allocated to this bill.
+     */
+    public function hasPayments(): bool
+    {
+        return $this->allocations()
+            ->whereHas('payment', fn (Builder $query) => $query->whereIn('status', [PaymentStatus::Pending, PaymentStatus::Verified]))
+            ->exists();
+    }
+
     public function isInstallable(): bool
     {
         return $this->paymentCategory->is_installable;

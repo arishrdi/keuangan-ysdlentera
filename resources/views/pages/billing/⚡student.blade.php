@@ -2,6 +2,7 @@
 
 use App\Actions\Billing\ApplyBillDiscount;
 use App\Actions\Billing\CancelBill;
+use App\Actions\Billing\UpdateBill;
 use App\Actions\Payments\SubmitPayment;
 use App\Enums\PaymentMethod;
 use App\Models\Bill;
@@ -48,6 +49,12 @@ new class extends Component {
     public string $discountReason = '';
 
     public string $cancellationReason = '';
+
+    public string $editDescription = '';
+
+    public ?int $editAmount = null;
+
+    public string $editDueDate = '';
 
     public function mount(Student $student): void
     {
@@ -203,6 +210,41 @@ new class extends Component {
         unset($this->allocations[$this->actionBillId], $this->bills);
     }
 
+    public function openEdit(int $billId): void
+    {
+        $this->authorize('manage-billing');
+        $this->resetValidation();
+
+        $this->actionBillId = $billId;
+        $this->editDescription = (string) $this->actionBill?->description;
+        $this->editAmount = $this->actionBill?->amount;
+        $this->editDueDate = (string) $this->actionBill?->due_date?->toDateString();
+
+        $this->dispatch('open-modal', name: 'bill-edit');
+    }
+
+    public function updateBill(UpdateBill $updateBill): void
+    {
+        $this->authorize('manage-billing');
+
+        $this->validate([
+            'editDescription' => ['required', 'string', 'max:255'],
+            'editAmount' => ['required', 'integer', 'min:1'],
+            'editDueDate' => ['nullable', 'date'],
+        ], [], ['editDescription' => 'keterangan', 'editAmount' => 'nominal', 'editDueDate' => 'jatuh tempo']);
+
+        $updateBill->handle(
+            $this->actionBill,
+            $this->editDescription,
+            $this->editAmount,
+            $this->editDueDate !== '' ? Carbon::parse($this->editDueDate) : null,
+        );
+
+        $this->dispatch('close-modal', name: 'bill-edit');
+        $this->dispatch('toast', variant: 'success', text: 'Tagihan diperbarui.');
+        unset($this->allocations[$this->actionBillId], $this->bills);
+    }
+
     public function openCancellation(int $billId): void
     {
         $this->authorize('manage-billing');
@@ -313,6 +355,9 @@ new class extends Component {
                             <td class="text-end">
                                 @if (in_array($bill->status, \App\Enums\BillStatus::outstanding(), true))
                                     <div class="flex justify-end gap-1">
+                                        @if ($bill->paid_amount === 0 && ! $bill->pending_amount)
+                                            <button type="button" class="btn btn-xs btn-ghost" wire:click="openEdit({{ $bill->id }})">Ubah</button>
+                                        @endif
                                         <button type="button" class="btn btn-xs btn-ghost" wire:click="openDiscount({{ $bill->id }})">Potongan</button>
                                         @if ($bill->paid_amount === 0)
                                             <button type="button" class="btn btn-xs btn-ghost text-error" wire:click="openCancellation({{ $bill->id }})">Batalkan</button>
@@ -432,6 +477,29 @@ new class extends Component {
                 <div class="modal-action">
                     <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Batal</button>
                     <button type="submit" class="btn btn-primary">Simpan potongan</button>
+                </div>
+            </form>
+        </x-modal>
+
+        <x-modal name="bill-edit" :title="'Ubah tagihan'.($this->actionBill ? ' — '.$this->actionBill->description : '')">
+            <form wire:submit="updateBill" class="space-y-4">
+                <p class="text-sm text-base-content/70">Hanya untuk tagihan yang belum ada pembayaran. Setiap perubahan tercatat di log aktivitas.</p>
+                <x-input wire:model="editDescription" label="Keterangan" required />
+                @if ($this->actionBill?->items()->exists())
+                    <div>
+                        <x-money-input wire:model="editAmount" label="Nominal" disabled />
+                        <p class="mt-1 text-xs text-base-content/60">Nominal tagihan seragam mengikuti item dan tidak bisa diubah.</p>
+                    </div>
+                @else
+                    <x-money-input wire:model="editAmount" label="Nominal" required />
+                @endif
+                @if ($this->actionBill?->discount_amount > 0)
+                    <p class="text-xs text-info">Tagihan ini memiliki potongan {{ \Illuminate\Support\Number::rupiah($this->actionBill->discount_amount) }}. Nominal tidak boleh lebih kecil dari potongan.</p>
+                @endif
+                <x-input wire:model="editDueDate" label="Jatuh tempo (opsional)" type="date" class="" />
+                <div class="modal-action">
+                    <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Batal</button>
+                    <button type="submit" class="btn btn-primary">Simpan perubahan</button>
                 </div>
             </form>
         </x-modal>

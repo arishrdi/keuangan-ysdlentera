@@ -273,25 +273,45 @@ new #[Title('Pembayaran')] class extends Component {
             @error('payment') <div role="alert" class="alert alert-error mt-4"><span>{{ $message }}</span></div> @enderror
 
             @if ($this->canManage && $payment->status === \App\Enums\PaymentStatus::Pending)
-                <div class="mt-6 grid gap-3 border-t border-base-300 pt-4 md:grid-cols-[1fr_auto_auto] md:items-end">
-                    <x-input wire:model="rejectionReason" label="Alasan penolakan (wajib bila ditolak)" placeholder="contoh: Dana belum masuk ke rekening" />
-                    <button type="button" class="btn btn-error btn-outline" wire:click="reject">Tolak</button>
-                    <x-confirm-button action="verify()" title="Verifikasi pembayaran" message="Pastikan dana sudah masuk ke rekening. Kuitansi akan terbit dan tagihan ditandai terbayar." confirm-label="Verifikasi" class="btn btn-primary">Verifikasi</x-confirm-button>
+                {{-- Verify asks in the confirmation dialog; reject first asks for the reason the guardian will read. --}}
+                <div class="mt-6 border-t border-base-300 pt-4" wire:key="pending-actions-{{ $payment->id }}" x-data="{ rejecting: @js($errors->has('rejectionReason')) }">
+                    <div x-show="! rejecting" class="flex flex-wrap items-center justify-end gap-2">
+                        <button type="button" class="btn btn-ghost me-auto" x-on:click="$el.closest('dialog').close()">Tutup</button>
+                        <button type="button" class="btn btn-error btn-outline" x-on:click="rejecting = true; $nextTick(() => $refs.reason.focus())">Tolak</button>
+                        <x-confirm-button action="verify()" title="Verifikasi pembayaran" message="Pastikan dana sudah masuk ke rekening. Kuitansi akan terbit dan tagihan ditandai terbayar." confirm-label="Verifikasi" class="btn btn-primary">Verifikasi</x-confirm-button>
+                    </div>
+
+                    <div x-show="rejecting" x-cloak class="space-y-3 rounded-box border border-error/30 bg-error/5 p-4">
+                        <x-input wire:model="rejectionReason" x-ref="reason" label="Alasan penolakan" placeholder="contoh: Dana belum masuk ke rekening" />
+                        <p class="text-xs text-base-content/65">Wali murid akan melihat alasan ini dan diminta mengirim ulang bukti yang benar.</p>
+                        <div class="flex flex-wrap justify-end gap-2">
+                            <button type="button" class="btn btn-ghost" x-on:click="rejecting = false">Batal</button>
+                            <button type="button" class="btn btn-error" wire:click="reject" wire:loading.attr="disabled" wire:target="reject">Tolak pembayaran</button>
+                        </div>
+                    </div>
                 </div>
             @elseif ($this->canManage && $payment->status === \App\Enums\PaymentStatus::Verified)
-                <details class="collapse-arrow collapse mt-6 border border-base-300">
-                    <summary class="collapse-title text-sm font-medium">Batalkan pembayaran ini</summary>
-                    <div class="collapse-content space-y-3">
-                        <p class="text-sm text-base-content/70">Gunakan hanya bila pembayaran salah catat. Kuitansi akan ditandai BATAL dan tagihan kembali belum lunas.</p>
-                        <x-input wire:model="cancellationReason" label="Alasan pembatalan" />
-                        <x-confirm-button action="cancel()" title="Batalkan pembayaran" message="Kuitansi akan ditandai batal dan tagihan kembali belum lunas." confirm-label="Batalkan pembayaran" danger class="btn btn-error btn-sm">Batalkan pembayaran</x-confirm-button>
+                {{-- Cancelling is for a payment recorded by mistake: the reason comes first, then the confirmation. --}}
+                <div class="mt-6 border-t border-base-300 pt-4" wire:key="verified-actions-{{ $payment->id }}" x-data="{ cancelling: @js($errors->has('cancellationReason')) }">
+                    <div x-show="! cancelling" class="flex flex-wrap items-center justify-end gap-2">
+                        <button type="button" class="btn btn-ghost me-auto" x-on:click="$el.closest('dialog').close()">Tutup</button>
+                        <button type="button" class="btn btn-error btn-outline" x-on:click="cancelling = true; $nextTick(() => $refs.cancelReason.focus())">Batalkan pembayaran</button>
                     </div>
-                </details>
+
+                    <div x-show="cancelling" x-cloak class="space-y-3 rounded-box border border-error/30 bg-error/5 p-4">
+                        <x-input wire:model="cancellationReason" x-ref="cancelReason" label="Alasan pembatalan" placeholder="contoh: Salah catat nominal" />
+                        <p class="text-xs text-base-content/65">Gunakan hanya bila pembayaran salah catat. Kuitansi akan ditandai batal dan tagihan kembali belum lunas.</p>
+                        <div class="flex flex-wrap justify-end gap-2">
+                            <button type="button" class="btn btn-ghost" x-on:click="cancelling = false">Kembali</button>
+                            <x-confirm-button action="cancel()" title="Batalkan pembayaran" message="Kuitansi akan ditandai batal dan tagihan kembali belum lunas." confirm-label="Batalkan pembayaran" danger class="btn btn-error">Batalkan pembayaran</x-confirm-button>
+                        </div>
+                    </div>
+                </div>
+            @else
+                <div class="modal-action">
+                    <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Tutup</button>
+                </div>
             @endif
         @endif
-
-        <div class="modal-action">
-            <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Tutup</button>
-        </div>
     </x-modal>
 </div>

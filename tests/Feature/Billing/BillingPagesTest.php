@@ -116,6 +116,26 @@ it('gives a discount from the student page', function () {
     expect($bill->refresh()->status)->toBe(BillStatus::Paid);
 });
 
+it('edits an unpaid bill from the student page', function () {
+    $student = Student::factory()->create();
+    $bill = Bill::factory()->forStudent($student)->create(['amount' => 150_000, 'due_date' => null]);
+    $this->actingAs(User::factory()->treasurer()->create());
+
+    Livewire::test('pages::billing.student', ['student' => $student])
+        ->assertSee('Ubah')
+        ->call('openEdit', $bill->id)
+        ->assertSet('editAmount', 150_000)
+        ->set('editDescription', 'Tunggakan 2025')
+        ->set('editAmount', 90_000)
+        ->set('editDueDate', '2026-12-01')
+        ->call('updateBill')
+        ->assertHasNoErrors();
+
+    expect($bill->refresh()->amount)->toBe(90_000)
+        ->and($bill->description)->toBe('Tunggakan 2025')
+        ->and($bill->due_date->toDateString())->toBe('2026-12-01');
+});
+
 it('lets the principal view a student page but not record payments', function () {
     $student = Student::factory()->create();
     $bill = Bill::factory()->forStudent($student)->create(['description' => 'SPP Juli 2026']);

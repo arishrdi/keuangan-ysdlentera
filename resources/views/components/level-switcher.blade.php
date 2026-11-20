@@ -16,18 +16,37 @@
         <x-icon name="chevron-down" class="size-4 opacity-60" />
     </summary>
 
-    <ul class="menu dropdown-content z-30 mt-1 w-52 rounded-box bg-base-100 p-2 shadow-lg ring-1 ring-base-300">
-        @foreach ([['value' => \App\Models\Level::ALL, 'name' => 'Semua jenjang', 'active' => $activeLevel === null], ...$levels->map(fn ($level) => ['value' => $level->id, 'name' => $level->name, 'active' => $activeLevel?->is($level)])] as $option)
+    @php
+        $options = [
+            ['value' => \App\Models\Level::ALL, 'name' => 'Semua jenjang', 'active' => $activeLevel === null],
+            ...$levels->map(fn ($level) => ['value' => $level->id, 'name' => $level->name, 'active' => (bool) $activeLevel?->is($level)]),
+        ];
+    @endphp
+
+    {{-- Each option is a menu item button submitting its own hidden form, so the whole row is the hit target. --}}
+    <ul class="menu dropdown-content z-30 mt-1 w-52 rounded-box bg-base-100 p-2 text-base-content shadow-lg ring-1 ring-base-300">
+        @foreach ($options as $option)
             <li>
-                <form method="POST" action="{{ route('levels.switch') }}">
-                    @csrf
-                    <input type="hidden" name="level" value="{{ $option['value'] }}" />
-                    <input type="hidden" name="stay" value="1" />
-                    <button type="submit" @class(['w-full text-start', 'menu-active' => $option['active']])>
-                        {{ $option['name'] }}
-                    </button>
-                </form>
+                <button
+                    type="submit"
+                    form="level-switch-{{ $option['value'] }}"
+                    @class(['justify-between', 'menu-active' => $option['active']])
+                    @if ($option['active']) aria-current="true" @endif
+                >
+                    {{ $option['name'] }}
+                    @if ($option['active'])
+                        <x-icon name="check" class="size-4" />
+                    @endif
+                </button>
             </li>
         @endforeach
     </ul>
+
+    @foreach ($options as $option)
+        <form id="level-switch-{{ $option['value'] }}" method="POST" action="{{ route('levels.switch') }}" class="hidden">
+            @csrf
+            <input type="hidden" name="level" value="{{ $option['value'] }}" />
+            <input type="hidden" name="stay" value="1" />
+        </form>
+    @endforeach
 </details>

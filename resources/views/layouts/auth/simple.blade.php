@@ -9,7 +9,7 @@
                 <x-app-logo-icon class="pointer-events-none absolute -bottom-32 -end-40 size-[28rem] text-accent opacity-10" aria-hidden="true" />
 
                 <a href="{{ route('home') }}" class="relative w-fit rounded-field" wire:navigate>
-                    <img src="{{ asset('images/logo.png') }}" alt="{{ config('app.name') }}" class="h-14 w-auto rounded-field" />
+                    <img src="{{ asset('images/logo-reverse.png') }}" alt="{{ config('app.name') }}" class="h-16 w-auto" />
                 </a>
 
                 <div class="relative mt-auto max-w-sm">

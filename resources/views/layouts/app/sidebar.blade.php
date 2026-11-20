@@ -26,7 +26,7 @@
                         @endif
 
                         @if ($isGuardian)
-                            <img src="{{ asset('images/logo.png') }}" alt="{{ config('app.name') }}" class="h-8 w-auto rounded-field lg:hidden" />
+                            <img src="{{ asset('images/logo-reverse.png') }}" alt="{{ config('app.name') }}" class="h-8 w-auto lg:hidden" />
                         @endif
                     </div>
 

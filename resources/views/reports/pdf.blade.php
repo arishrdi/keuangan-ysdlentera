@@ -2,7 +2,7 @@
     use App\Actions\Reports\ReportExporter;
 
     /** @var \App\Actions\Reports\ReportTable $table */
-    $logo = 'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/logo.png')));
+    $logo = 'data:image/png;base64,'.base64_encode(file_get_contents(public_path('images/logo-print.png')));
     $rightAligned = ['money', 'number', 'percent'];
 @endphp
 <!DOCTYPE html>
