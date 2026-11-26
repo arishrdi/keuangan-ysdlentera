@@ -41,7 +41,11 @@
         @endif
     </summary>
 
-    <div class="dropdown-content z-30 mb-1 mt-1 w-64 rounded-box bg-base-100 p-2 text-base-content shadow-lg ring-1 ring-base-300">
+    <div @class([
+        'dropdown-content z-30 mb-1 mt-1 rounded-box bg-base-100 p-2 text-base-content shadow-lg ring-1 ring-base-300',
+        'w-64' => $compact,
+        'w-full' => ! $compact,
+    ])>
         <div class="flex items-center gap-2 px-2 py-1.5">
             <div class="avatar avatar-placeholder">
                 <div class="w-8 rounded-field bg-neutral text-neutral-content">
