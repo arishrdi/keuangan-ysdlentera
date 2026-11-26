@@ -25,7 +25,7 @@ it('links each guardian to a prefilled WhatsApp reminder', function () {
     $html = $component->html();
 
     expect($html)->toContain('https://wa.me/6281234567890?text=')
-        ->and(rawurldecode(html_entity_decode($html)))->toContain('Siti Aminah')->toContain('Rp150.000');
+        ->and(rawurldecode(html_entity_decode($html)))->toContain('*Siti Aminah*')->toContain('*Total: Rp150.000*');
 });
 
 it('flags guardians without a phone number', function () {

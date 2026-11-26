@@ -28,10 +28,10 @@ class PaymentReminder
         return implode("\n", [
             "Assalamu'alaikum Bapak/Ibu {$guardian->name},",
             '',
-            'Kami dari '.($student->level->name ?? config('app.name')).' mengingatkan tagihan ananda '.$student->name.($classroom ? ' (kelas '.$classroom.')' : '').' yang belum lunas:',
+            'Kami dari '.($student->level->name ?? config('app.name')).' mengingatkan tagihan ananda *'.$student->name.'*'.($classroom ? ' (kelas '.$classroom.')' : '').' yang belum lunas:',
             ...$lines->all(),
             '',
-            'Total: '.Number::rupiah($bills->sum(fn (Bill $bill): int => $bill->remainingAmount())),
+            '*Total: '.Number::rupiah($bills->sum(fn (Bill $bill): int => $bill->remainingAmount())).'*',
             '',
             'Pembayaran dapat dilakukan melalui aplikasi '.config('app.name').' ('.route('dashboard').') atau tunai di sekolah. Mohon abaikan pesan ini bila sudah membayar.',
             '',
