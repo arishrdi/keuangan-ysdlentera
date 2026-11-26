@@ -243,24 +243,24 @@ new #[Title('Kasir')] class extends Component {
                     </div>
                 @endif
             @else
-                <div class="panel flex flex-wrap items-center justify-between gap-3 px-5 py-4">
-                    <div class="min-w-0">
-                        <p class="truncate font-semibold">{{ $this->student->name }}</p>
-                        <p class="text-sm text-base-content/65">
-                            {{ $this->student->nis ? 'NIS '.$this->student->nis.' · ' : '' }}{{ $this->student->level->name }}, kelas {{ $this->student->currentEnrollment?->classroom->name ?? '-' }}
-                        </p>
-                        @if ($this->student->guardians->isNotEmpty())
-                            <p class="text-xs text-base-content/55">Wali: {{ $this->student->guardians->pluck('name')->join(', ') }}</p>
-                        @endif
-                    </div>
-                    <div class="flex items-center gap-4">
-                        <div class="text-end">
-                            <p class="text-xs text-base-content/60">Sisa tagihan</p>
-                            <p class="font-bold text-primary">{{ \Illuminate\Support\Number::rupiah($this->bills->sum(fn ($bill) => $bill->remainingAmount())) }}</p>
+                <div class="panel">
+                    <div class="flex items-start justify-between gap-3 px-5 pt-4 pb-3">
+                        <div class="min-w-0">
+                            <p class="truncate font-semibold">{{ $this->student->name }}</p>
+                            <p class="text-sm text-base-content/65">
+                                {{ $this->student->nis ? 'NIS '.$this->student->nis.' · ' : '' }}{{ $this->student->level->name }}, kelas {{ $this->student->currentEnrollment?->classroom->name ?? '-' }}
+                            </p>
+                            @if ($this->student->guardians->isNotEmpty())
+                                <p class="text-xs text-base-content/55">Wali: {{ $this->student->guardians->pluck('name')->join(', ') }}</p>
+                            @endif
                         </div>
-                        <button type="button" class="btn btn-sm btn-ghost" wire:click="clearStudent">
-                            <x-icon name="arrow-left" class="size-4" /> Ganti siswa
+                        <button type="button" class="btn btn-sm btn-outline btn-primary shrink-0" wire:click="clearStudent">
+                            <x-icon name="magnifying-glass" class="size-4" /> Ganti siswa
                         </button>
+                    </div>
+                    <div class="flex items-baseline justify-between gap-3 border-t border-base-300 px-5 py-3">
+                        <span class="text-sm text-base-content/65">Sisa tagihan</span>
+                        <span class="text-lg font-bold text-primary">{{ \Illuminate\Support\Number::rupiah($this->bills->sum(fn ($bill) => $bill->remainingAmount())) }}</span>
                     </div>
                 </div>
 
