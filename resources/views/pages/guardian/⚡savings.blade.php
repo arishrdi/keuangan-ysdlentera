@@ -61,9 +61,9 @@ new #[Title('Tabungan Anak')] class extends Component {
         @endif
     </x-guardian.band>
 
-    <x-guardian.overlap>
+    <x-guardian.overlap class="lg:grid lg:grid-cols-3 lg:items-start lg:gap-4 lg:space-y-0">
         @if ($this->children->isEmpty())
-            <div class="panel p-6 text-sm text-base-content/70 shadow-sm">Belum ada siswa yang terhubung dengan akun Anda.</div>
+            <div class="panel p-6 text-sm text-base-content/70 shadow-sm lg:col-span-3">Belum ada siswa yang terhubung dengan akun Anda.</div>
         @else
             @foreach ($this->children as $child)
                 @if ($child->id === $studentId)
@@ -75,7 +75,7 @@ new #[Title('Tabungan Anak')] class extends Component {
                 @endif
             @endforeach
 
-            <section class="panel px-5 py-2" aria-labelledby="savings-history">
+            <section class="panel px-5 py-2 lg:col-span-2" aria-labelledby="savings-history">
                 <h2 id="savings-history" class="pb-1 pt-3 text-sm font-semibold">Riwayat</h2>
                 <ul class="divide-y divide-base-300">
                     @forelse ($this->transactions as $transaction)

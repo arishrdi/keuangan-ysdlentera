@@ -337,7 +337,7 @@ new #[Title('Tagihan Anak')] class extends Component {
             </section>
         @endif
 
-        <div class="space-y-3">
+        <div class="grid items-start gap-3 lg:grid-cols-2">
             @forelse ($this->bills as $bill)
                 @php
                     $isSelected = array_key_exists($bill->id, $allocations);
@@ -389,7 +389,7 @@ new #[Title('Tagihan Anak')] class extends Component {
                     </div>
                 </div>
             @empty
-                <div class="panel flex items-center gap-4 p-5">
+                <div class="panel flex items-center gap-4 p-5 lg:col-span-2">
                     <span class="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-content">
                         <x-icon name="check" class="size-6" />
                     </span>
@@ -404,7 +404,7 @@ new #[Title('Tagihan Anak')] class extends Component {
 
         @if ($allocations !== [])
             <div class="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-base-300 bg-base-100 px-4 py-3 lg:bottom-0 lg:left-64">
-                <div class="mx-auto flex max-w-3xl items-center justify-between gap-3">
+                <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 lg:px-8">
                     <div>
                         <div class="text-xs text-base-content/60">{{ count($allocations) }} tagihan dipilih</div>
                         <div class="text-lg font-semibold">{{ \Illuminate\Support\Number::rupiah($this->allocationTotal) }}</div>

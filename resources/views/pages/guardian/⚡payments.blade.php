@@ -36,9 +36,9 @@ new #[Title('Riwayat Pembayaran')] class extends Component {
 
     <x-guardian.band title="Riwayat Pembayaran" description="Semua pembayaran yang pernah dikirim beserta status dan kuitansinya." />
 
-    <x-guardian.overlap>
+    <x-guardian.overlap class="lg:grid lg:grid-cols-3 lg:items-start lg:gap-4 lg:space-y-0">
         @if ($latestReceipt)
-            <section class="panel p-5 text-center shadow-sm" aria-labelledby="latest-receipt">
+            <section class="panel p-5 text-center shadow-sm lg:sticky lg:top-20" aria-labelledby="latest-receipt">
                 <span class="mx-auto flex size-14 items-center justify-center rounded-full bg-primary text-primary-content">
                     <x-icon name="check" class="size-7" />
                 </span>
@@ -58,7 +58,7 @@ new #[Title('Riwayat Pembayaran')] class extends Component {
             </section>
         @endif
 
-        <section class="panel px-5 py-2" aria-label="Daftar pembayaran">
+        <section @class(['panel px-5 py-2', 'lg:col-span-2' => $latestReceipt, 'lg:col-span-3' => ! $latestReceipt]) aria-label="Daftar pembayaran">
             <ul class="divide-y divide-base-300">
                 @forelse ($this->payments as $payment)
                     <li class="flex gap-3 py-4" wire:key="payment-{{ $payment->id }}">
@@ -91,6 +91,6 @@ new #[Title('Riwayat Pembayaran')] class extends Component {
             </ul>
         </section>
 
-        <div>{{ $this->payments->links() }}</div>
+        <div class="lg:col-span-3">{{ $this->payments->links() }}</div>
     </x-guardian.overlap>
 </div>

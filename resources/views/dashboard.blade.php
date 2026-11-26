@@ -479,7 +479,7 @@
                         };
                     @endphp
 
-                    <div class="space-y-4" wire:key="child-{{ $child->id }}" @if ($children->count() > 1) x-show="active === {{ $child->id }}" @endif>
+                    <div class="grid items-start gap-4 lg:grid-cols-2" wire:key="child-{{ $child->id }}" @if ($children->count() > 1) x-show="active === {{ $child->id }}" @endif>
                         @if ($outstanding > 0)
                             <section class="panel p-5 shadow-sm" aria-label="Tagihan {{ $child->name }}">
                                 <div class="flex items-start justify-between gap-3">
