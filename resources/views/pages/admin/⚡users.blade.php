@@ -271,7 +271,7 @@ new #[Title('Data Pengguna')] class extends Component {
                                 <option value="{{ $level->id }}" wire:key="level-{{ $level->id }}">{{ $level->name }}</option>
                             @endforeach
                         </x-select>
-                        <p class="label">Pilih satu jenjang agar akun ini hanya bisa mengelola jenjang tersebut.</p>
+                        <p class="label text-xs">Akun hanya bisa mengelola jenjang ini.</p>
                     </div>
                 @endif
                 <x-input wire:model="email" label="Email (opsional)" type="email" />
