@@ -1,18 +1,48 @@
 <?php
 
 use App\Actions\Budgets\CompleteBudgetProposal;
+use App\Actions\Cash\CashLedger;
 use App\Actions\Budgets\DecideBudgetProposal;
 use App\Actions\Budgets\StartBudgetDisbursement;
 use App\Actions\Budgets\SubmitBudgetProposal;
 use App\Enums\BudgetAction;
 use App\Enums\BudgetStatus;
+use App\Enums\TransactionCategoryType;
 use App\Models\BudgetProposal;
+use App\Models\CashAccount;
+use App\Models\TransactionCategory;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 new class extends Component {
+    use WithFileUploads;
+
     public BudgetProposal $budgetProposal;
+
+    public ?int $expenseAccountId = null;
+
+    public ?int $expenseCategoryId = null;
+
+    public ?int $expenseAmount = null;
+
+    public string $expenseDate = '';
+
+    public string $expenseCounterparty = '';
+
+    public string $expenseDescription = '';
+
+    public ?UploadedFile $expenseProof = null;
+
+    public ?int $cancellingExpenseId = null;
+
+    public string $expenseCancellationReason = '';
 
     public string $notes = '';
 
@@ -20,6 +50,8 @@ new class extends Component {
 
     public function mount(BudgetProposal $budgetProposal): void
     {
+        $this->authorize('access-level', $budgetProposal->level_id);
+
         abort_if($budgetProposal->status === BudgetStatus::Draft && ! Gate::allows('manage-budgets'), 404);
     }
 
@@ -44,6 +76,115 @@ new class extends Component {
         $role = $this->proposal->status->awaitingRole();
 
         return $role !== null && auth()->user()->hasRole($role);
+    }
+
+    /**
+     * Cash accounts of the budget's level that the expense can be paid from.
+     *
+     * @return Collection<int, CashAccount>
+     */
+    #[Computed]
+    public function expenseAccounts(): Collection
+    {
+        $level = $this->budgetProposal->level;
+
+        return CashAccount::query()->availableTo($level)->active()->withBalance($level)->orderBy('type', 'desc')->orderBy('name')->get();
+    }
+
+    /**
+     * @return Collection<int, TransactionCategory>
+     */
+    #[Computed]
+    public function expenseCategories(): Collection
+    {
+        return TransactionCategory::query()->ofType(TransactionCategoryType::Expense)->where('is_active', true)->orderBy('name')->get();
+    }
+
+    public function openExpense(): void
+    {
+        $this->authorize('manage-budgets');
+        abort_unless($this->proposal->status->acceptsExpenses(), 403);
+
+        $this->resetValidation();
+        $this->reset('expenseCategoryId', 'expenseAmount', 'expenseCounterparty', 'expenseProof');
+        $this->expenseAccountId = $this->expenseAccounts->first()?->id;
+        $this->expenseDate = now()->toDateString();
+        $this->expenseDescription = $this->proposal->title;
+
+        $this->dispatch('open-modal', name: 'budget-expense');
+    }
+
+    public function recordExpense(CashLedger $ledger): void
+    {
+        $this->authorize('manage-budgets');
+        abort_unless($this->proposal->status->acceptsExpenses(), 403);
+
+        $this->validate([
+            'expenseAccountId' => ['required', 'integer', Rule::in($this->expenseAccounts->modelKeys())],
+            'expenseCategoryId' => ['required', 'integer', Rule::in($this->expenseCategories->modelKeys())],
+            'expenseAmount' => ['required', 'integer', 'min:1'],
+            'expenseDate' => ['required', 'date', 'before_or_equal:today'],
+            'expenseCounterparty' => ['nullable', 'string', 'max:255'],
+            'expenseDescription' => ['required', 'string', 'max:255'],
+            'expenseProof' => ['nullable', 'file', 'mimes:jpg,jpeg,png,pdf', 'max:2048'],
+        ], [], [
+            'expenseAccountId' => 'akun kas',
+            'expenseCategoryId' => 'kategori',
+            'expenseAmount' => 'nominal',
+            'expenseDate' => 'tanggal',
+            'expenseCounterparty' => 'dibayarkan kepada',
+            'expenseDescription' => 'keterangan',
+            'expenseProof' => 'bukti',
+        ]);
+
+        try {
+            $entry = $ledger->recordExpense(
+                $this->expenseAccounts->firstWhere('id', $this->expenseAccountId),
+                $this->expenseCategories->firstWhere('id', $this->expenseCategoryId),
+                $this->expenseAmount,
+                Carbon::parse($this->expenseDate),
+                $this->expenseDescription,
+                $this->expenseCounterparty ?: null,
+                $this->expenseProof,
+                budget: $this->budgetProposal,
+                level: $this->budgetProposal->level,
+            );
+        } catch (ValidationException $exception) {
+            throw ValidationException::withMessages(collect($exception->errors())->mapWithKeys(fn (array $messages, string $key) => [
+                ['amount' => 'expenseAmount', 'accountId' => 'expenseAccountId', 'categoryId' => 'expenseCategoryId', 'budgetId' => 'budget'][$key] ?? $key => $messages,
+            ])->all());
+        }
+
+        $this->reset('expenseProof');
+        $this->dispatch('close-modal', name: 'budget-expense');
+        $this->dispatch('toast', variant: 'success', text: 'Pengeluaran '.$entry->number.' dicatat.');
+        unset($this->proposal, $this->expenseAccounts);
+    }
+
+    public function confirmCancelExpense(int $expenseId): void
+    {
+        $this->authorize('manage-budgets');
+        $this->resetValidation();
+
+        $this->cancellingExpenseId = $expenseId;
+        $this->expenseCancellationReason = '';
+
+        $this->dispatch('open-modal', name: 'budget-expense-cancel');
+    }
+
+    public function cancelExpense(CashLedger $ledger): void
+    {
+        $this->authorize('manage-budgets');
+
+        $this->validate(['expenseCancellationReason' => ['required', 'string', 'max:255']], [], ['expenseCancellationReason' => 'alasan pembatalan']);
+
+        $expense = $this->budgetProposal->expenses()->whereNull('cancelled_at')->findOrFail($this->cancellingExpenseId);
+
+        $ledger->cancel($expense, auth()->user(), $this->expenseCancellationReason);
+
+        $this->dispatch('close-modal', name: 'budget-expense-cancel');
+        $this->dispatch('toast', variant: 'success', text: 'Pengeluaran '.$expense->number.' dibatalkan.');
+        unset($this->proposal, $this->expenseAccounts);
     }
 
     public function decide(string $decision, DecideBudgetProposal $decideBudgetProposal): void
@@ -178,7 +319,7 @@ new class extends Component {
                                     @if ($proposal->status === \App\Enums\BudgetStatus::Approved)
                                         <button type="button" class="btn btn-sm" wire:click="startDisbursement">Mulai pencairan</button>
                                     @endif
-                                    <a href="{{ route('finance.expenses', ['anggaran' => $proposal->id]) }}" class="btn btn-sm btn-primary" wire:navigate>Catat pengeluaran</a>
+                                    <button type="button" class="btn btn-sm btn-primary" wire:click="openExpense">Catat pengeluaran</button>
                                     <button type="button" class="btn btn-sm btn-outline" x-data x-on:click="$dispatch('open-modal', 'complete-budget')">Selesaikan</button>
                                 </div>
                             @endif
@@ -190,7 +331,7 @@ new class extends Component {
                         </dl>
                         <progress class="progress progress-primary h-2.5" value="{{ $realized }}" max="{{ max($proposal->total_amount, 1) }}"></progress>
                         <table class="table table-sm mt-2">
-                            <thead><tr><th>Tanggal</th><th>No.</th><th>Keterangan</th><th>Akun</th><th class="text-end">Jumlah</th></tr></thead>
+                            <thead><tr><th>Tanggal</th><th>No.</th><th>Keterangan</th><th>Akun</th><th class="text-end">Jumlah</th>@if ($this->canManage)<th></th>@endif</tr></thead>
                             <tbody>
                                 @forelse ($proposal->expenses as $expense)
                                     <tr wire:key="expense-{{ $expense->id }}" @class(['opacity-50' => $expense->isCancelled()])>
@@ -199,9 +340,16 @@ new class extends Component {
                                         <td>{{ $expense->description }}{{ $expense->isCancelled() ? ' (dibatalkan)' : '' }}</td>
                                         <td class="text-sm">{{ $expense->cashAccount->name }}</td>
                                         <td @class(['text-end font-mono', 'line-through' => $expense->isCancelled()])>{{ \Illuminate\Support\Number::rupiah($expense->amount) }}</td>
+                                        @if ($this->canManage)
+                                            <td class="text-end">
+                                                @unless ($expense->isCancelled())
+                                                    <button type="button" class="btn btn-xs btn-ghost text-error" wire:click="confirmCancelExpense({{ $expense->id }})">Batalkan</button>
+                                                @endunless
+                                            </td>
+                                        @endif
                                     </tr>
                                 @empty
-                                    <tr><td colspan="5" class="text-center text-base-content/60">Belum ada pengeluaran dari anggaran ini.</td></tr>
+                                    <tr><td colspan="{{ $this->canManage ? 6 : 5 }}" class="text-center text-base-content/60">Belum ada pengeluaran dari anggaran ini.</td></tr>
                                 @endforelse
                             </tbody>
                         </table>
@@ -263,6 +411,55 @@ new class extends Component {
                 <div class="modal-action">
                     <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Batal</button>
                     <button type="submit" class="btn btn-primary">Selesaikan</button>
+                </div>
+            </form>
+        </x-modal>
+
+        <x-modal name="budget-expense" :title="'Catat pengeluaran — '.$proposal->title">
+            <form wire:submit="recordExpense" class="space-y-4">
+                <p class="text-sm text-base-content/70">Sisa anggaran <span class="font-semibold text-base-content">{{ \Illuminate\Support\Number::rupiah($proposal->total_amount - $realized) }}</span>. Pengeluaran tidak boleh melebihi sisa ini.</p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div x-data="{ balances: @js($this->expenseAccounts->mapWithKeys(fn ($account) => [$account->id => \Illuminate\Support\Number::rupiah($account->balance)])) }">
+                        <x-select wire:model="expenseAccountId" label="Dibayar dari akun" placeholder="Pilih akun" required>
+                            @foreach ($this->expenseAccounts as $account)
+                                <option value="{{ $account->id }}" wire:key="expense-account-{{ $account->id }}">{{ $account->name }}</option>
+                            @endforeach
+                        </x-select>
+                        <p class="mt-1 text-xs text-base-content/60" x-show="balances[$wire.expenseAccountId]" x-cloak>
+                            Saldo saat ini <span class="font-semibold text-base-content" x-text="balances[$wire.expenseAccountId]"></span>
+                        </p>
+                    </div>
+                    <x-select wire:model="expenseCategoryId" label="Kategori" placeholder="Pilih kategori" required>
+                        @foreach ($this->expenseCategories as $category)
+                            <option value="{{ $category->id }}" wire:key="expense-category-{{ $category->id }}">{{ $category->name }}</option>
+                        @endforeach
+                    </x-select>
+                    <x-money-input wire:model="expenseAmount" label="Nominal" required />
+                    <x-input wire:model="expenseDate" label="Tanggal" type="date" required />
+                </div>
+                <x-input wire:model="expenseCounterparty" label="Dibayarkan kepada (opsional)" />
+                <x-input wire:model="expenseDescription" label="Keterangan" required />
+                <fieldset class="fieldset p-0">
+                    <label for="expense-proof" class="fieldset-legend pt-0">Bukti / nota (opsional, maks. 2 MB)</label>
+                    <input id="expense-proof" type="file" accept="image/*,application/pdf" class="file-input w-full" wire:model="expenseProof" />
+                    @error('expenseProof') <p class="label text-error">{{ $message }}</p> @enderror
+                </fieldset>
+                @error('budget') <p class="text-sm text-error">{{ $message }}</p> @enderror
+
+                <div class="modal-action">
+                    <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Batal</button>
+                    <button type="submit" class="btn btn-primary" wire:loading.attr="disabled">Simpan</button>
+                </div>
+            </form>
+        </x-modal>
+
+        <x-modal name="budget-expense-cancel" title="Batalkan pengeluaran">
+            <form wire:submit="cancelExpense" class="space-y-4">
+                <p class="text-sm text-base-content/70">Transaksi tidak dihapus. Sistem membuat mutasi pembalik dan mencatat alasan pembatalan.</p>
+                <x-input wire:model="expenseCancellationReason" label="Alasan pembatalan" required />
+                <div class="modal-action">
+                    <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Kembali</button>
+                    <button type="submit" class="btn btn-error">Batalkan pengeluaran</button>
                 </div>
             </form>
         </x-modal>

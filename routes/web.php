@@ -35,17 +35,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::livewire('tagihan/siswa/{student}', 'pages::billing.student')->name('billing.student');
             Route::livewire('pembayaran', 'pages::payments.index')->name('payments.index');
             Route::livewire('pemasukan', 'pages::finance.incomes')->name('finance.incomes');
-            Route::livewire('pengeluaran', 'pages::finance.expenses')->name('finance.expenses');
             Route::livewire('kas', 'pages::finance.cash')->name('finance.cash');
             Route::get('kas/{cashTransaction}/bukti', CashTransactionProofController::class)->name('finance.proof');
-            Route::livewire('tabungan', 'pages::savings.index')->name('savings.index');
-            Route::livewire('tabungan/siswa/{student}', 'pages::savings.student')->name('savings.student');
             Route::livewire('laporan', 'pages::reports.index')->name('reports.index');
             Route::livewire('laporan/{report}', 'pages::reports.show')->name('reports.show');
             Route::get('laporan/{report}/{format}', ReportExportController::class)->whereIn('format', ['excel', 'pdf'])->name('reports.export');
             Route::livewire('anggaran', 'pages::budgets.index')->name('budgets.index');
             Route::livewire('anggaran/{budgetProposal}', 'pages::budgets.show')->whereNumber('budgetProposal')->name('budgets.show');
             Route::get('anggaran/{budgetProposal}/lampiran/{attachment}', BudgetAttachmentController::class)->name('budgets.attachment');
+        });
+
+        Route::middleware('role:yayasan')->group(function () {
+            Route::livewire('pengeluaran', 'pages::finance.expenses')->name('finance.expenses');
+        });
+
+        Route::middleware('role:kepala_sekolah,yayasan')->group(function () {
+            Route::livewire('tabungan', 'pages::savings.index')->name('savings.index');
+            Route::livewire('tabungan/siswa/{student}', 'pages::savings.student')->name('savings.student');
+        });
+
+        Route::middleware('role:teller')->group(function () {
+            Route::livewire('kasir', 'pages::teller.index')->name('teller.index');
         });
 
         Route::middleware('role:bendahara')->group(function () {
@@ -63,6 +73,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::middleware('role:admin')->prefix('admin')->group(function () {
             Route::livewire('pengguna', 'pages::admin.users')->name('admin.users');
+            Route::livewire('pengingat-tagihan', 'pages::admin.payment-reminders')->name('admin.payment-reminders');
             Route::livewire('jenjang', 'pages::admin.levels')->name('admin.levels');
             Route::livewire('import-siswa', 'pages::admin.student-import')->name('admin.student-import');
             Route::livewire('tahun-ajaran', 'pages::admin.academic-years')->name('admin.academic-years');

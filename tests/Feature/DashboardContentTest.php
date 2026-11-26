@@ -28,3 +28,34 @@ it('counts only active students of the active level for staff', function () {
         ->assertOk()
         ->assertSeeInOrder(['Siswa aktif', '3', 'SD']);
 });
+
+it('shows expense figures to the foundation only', function (string $state, bool $seesExpenses) {
+    $response = $this->actingAs(User::factory()->{$state}()->create())
+        ->withSession([Level::SESSION_KEY => Level::ALL])
+        ->get(route('dashboard'))
+        ->assertOk();
+
+    $seesExpenses
+        ? $response->assertSee('Pemasukan dan pengeluaran per bulan')
+        : $response->assertSee('Pemasukan per bulan')->assertDontSee('Pemasukan dan pengeluaran per bulan');
+})->with([
+    'foundation' => ['foundation', true],
+    'principal' => ['principal', false],
+    'treasurer' => ['treasurer', false],
+]);
+
+it('hides the savings balance from the treasurer', function () {
+    $this->actingAs(User::factory()->treasurer()->create())
+        ->withSession([Level::SESSION_KEY => Level::ALL])
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Tabungan siswa');
+});
+
+it('greets tellers with a link to the cashier page', function () {
+    $this->actingAs(User::factory()->teller()->create())
+        ->withSession([Level::SESSION_KEY => Level::ALL])
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee(route('teller.index'));
+});

@@ -286,7 +286,7 @@ new class extends Component {
     <x-page-header
         :title="$this->isIncome ? 'Pemasukan' : 'Pengeluaran'"
         :meta="[($this->activeLevel ? 'Jenjang '.$this->activeLevel->name : 'Semua jenjang')]"
-        :description="($this->isIncome ? 'Pembayaran siswa masuk otomatis; catat di sini pemasukan lain seperti donasi.' : 'Catat setiap uang yang keluar beserta buktinya.')"
+        :description="($this->isIncome ? 'Pembayaran siswa masuk otomatis; catat di sini pemasukan lain seperti donasi.' : 'Pengeluaran dicatat bendahara dari halaman Anggaran saat pencairan.')"
     >
         <x-slot:actions>
             @if ($this->canManage)

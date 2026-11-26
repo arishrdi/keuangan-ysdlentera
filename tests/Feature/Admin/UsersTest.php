@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\Level;
 use App\Models\User;
 use Livewire\Livewire;
 
@@ -88,4 +89,36 @@ it('forbids non-admins from saving accounts', function () {
         ->assertForbidden();
 
     expect(User::query()->where('username', 'penyusup')->exists())->toBeFalse();
+});
+
+it('locks a teller account to the chosen level', function () {
+    $level = Level::factory()->sd()->create();
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test('pages::admin.users')
+        ->set('name', 'Pak Teller')
+        ->set('username', 'teller.sd')
+        ->set('role', Role::Teller->value)
+        ->set('level_id', $level->id)
+        ->set('password', 'rahasia123')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(User::query()->where('username', 'teller.sd')->sole()->level_id)->toBe($level->id);
+});
+
+it('ignores a level for roles that always cover every level', function () {
+    $level = Level::factory()->sd()->create();
+    $this->actingAs(User::factory()->admin()->create());
+
+    Livewire::test('pages::admin.users')
+        ->set('name', 'Ketua Yayasan')
+        ->set('username', 'yayasan2')
+        ->set('role', Role::Foundation->value)
+        ->set('level_id', $level->id)
+        ->set('password', 'rahasia123')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(User::query()->where('username', 'yayasan2')->sole()->level_id)->toBeNull();
 });

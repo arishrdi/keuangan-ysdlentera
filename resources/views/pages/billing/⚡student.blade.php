@@ -58,6 +58,8 @@ new class extends Component {
 
     public function mount(Student $student): void
     {
+        $this->authorize('view-student-billing', $student);
+
         $this->student = $student->load('level', 'currentEnrollment.classroom', 'guardians');
         $this->paidOn = now()->toDateString();
     }

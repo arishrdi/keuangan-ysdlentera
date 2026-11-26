@@ -95,3 +95,17 @@ it('shows the per-level comparison on the foundation dashboard', function () {
         ->assertSee('Perbandingan per jenjang')
         ->assertSeeInOrder(['SD', 'SMP', 'Gabungan']);
 });
+
+it('hides the expense and savings reports from the treasurer', function (string $report) {
+    $this->actingAs(User::factory()->treasurer()->create())
+        ->withSession([Level::SESSION_KEY => Level::ALL])
+        ->get(route('reports.show', $report))
+        ->assertForbidden();
+})->with(['pengeluaran', 'tabungan']);
+
+it('hides the expense report but not the savings report from the principal', function () {
+    $principal = User::factory()->principal()->create();
+
+    $this->actingAs($principal)->withSession([Level::SESSION_KEY => Level::ALL])->get(route('reports.show', 'pengeluaran'))->assertForbidden();
+    $this->actingAs($principal)->withSession([Level::SESSION_KEY => Level::ALL])->get(route('reports.show', 'tabungan'))->assertOk();
+});

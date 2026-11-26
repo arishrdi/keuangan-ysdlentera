@@ -3,8 +3,10 @@
 use App\Actions\DeleteUnusedRecord;
 use App\Enums\Role;
 use App\Models\ActivityLog;
+use App\Models\Level;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
@@ -33,6 +35,8 @@ new #[Title('Data Pengguna')] class extends Component {
 
     public string $role = '';
 
+    public ?int $level_id = null;
+
     public bool $is_active = true;
 
     public string $password = '';
@@ -49,6 +53,7 @@ new #[Title('Data Pengguna')] class extends Component {
     public function users(): LengthAwarePaginator
     {
         return User::query()
+            ->with('level')
             ->whereIn('role', Role::staff())
             ->when($this->search !== '', fn ($query) => $query->where(fn ($query) => $query
                 ->where('name', 'like', '%'.$this->search.'%')
@@ -58,12 +63,27 @@ new #[Title('Data Pengguna')] class extends Component {
             ->paginate(20);
     }
 
+    /**
+     * @return Collection<int, Level>
+     */
+    #[Computed]
+    public function levels(): Collection
+    {
+        return Level::query()->ordered()->get();
+    }
+
+    #[Computed]
+    public function roleCanBeAssignedToLevel(): bool
+    {
+        return Role::tryFrom($this->role)?->canBeAssignedToLevel() ?? false;
+    }
+
     public function create(): void
     {
         $this->authorize('manage-master-data');
 
         $this->resetValidation();
-        $this->reset('editingId', 'name', 'username', 'email', 'phone', 'role', 'password');
+        $this->reset('editingId', 'name', 'username', 'email', 'phone', 'role', 'level_id', 'password');
         $this->is_active = true;
 
         $this->dispatch('open-modal', name: 'user-form');
@@ -81,6 +101,7 @@ new #[Title('Data Pengguna')] class extends Component {
         $this->email = (string) $user->email;
         $this->phone = (string) $user->phone;
         $this->role = $user->role->value;
+        $this->level_id = $user->level_id;
         $this->is_active = $user->is_active;
         $this->password = '';
 
@@ -95,12 +116,17 @@ new #[Title('Data Pengguna')] class extends Component {
         $this->email = Str::lower(trim($this->email));
         $this->phone = (string) User::normalizePhone($this->phone);
 
+        if (! $this->roleCanBeAssignedToLevel) {
+            $this->level_id = null;
+        }
+
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
             'username' => ['required', 'string', 'min:3', 'max:50', 'regex:/^[a-z0-9._-]+$/', Rule::unique(User::class)->ignore($this->editingId)],
             'email' => ['nullable', 'email', 'max:255', Rule::unique(User::class)->ignore($this->editingId)],
             'phone' => ['nullable', 'string', 'min:9', 'max:20', Rule::unique(User::class)->ignore($this->editingId)],
             'role' => ['required', Rule::in(array_map(fn (Role $role) => $role->value, Role::staff()))],
+            'level_id' => ['nullable', 'integer', Rule::exists(Level::class, 'id')],
             'is_active' => ['boolean'],
             'password' => [$this->editingId ? 'nullable' : 'required', 'string', Password::default()],
         ], [
@@ -108,6 +134,7 @@ new #[Title('Data Pengguna')] class extends Component {
         ], [
             'name' => 'nama',
             'phone' => 'nomor HP',
+            'level_id' => 'jenjang',
         ]);
 
         if ($this->editingId === auth()->id() && ($validated['role'] !== Role::Admin->value || ! $validated['is_active'])) {
@@ -131,7 +158,7 @@ new #[Title('Data Pengguna')] class extends Component {
             $this->editingId ? 'user.updated' : 'user.created',
             ($this->editingId ? 'Mengubah' : 'Menambah').' akun '.$user->role->label().' '.$user->name,
             $user,
-            ['role' => $user->role->value, 'is_active' => $user->is_active, 'password_changed' => filled($validated['password'])],
+            ['role' => $user->role->value, 'level_id' => $user->level_id, 'is_active' => $user->is_active, 'password_changed' => filled($validated['password'])],
         );
 
         $this->dispatch('close-modal', name: 'user-form');
@@ -158,7 +185,7 @@ new #[Title('Data Pengguna')] class extends Component {
 }; ?>
 
 <div>
-    <x-page-header title="Data Pengguna" description="Akun staf: Yayasan, Kepala Sekolah, Bendahara, dan Admin. Akun wali murid dikelola di menu Wali Murid.">
+    <x-page-header title="Data Pengguna" description="Akun staf: Yayasan, Kepala Sekolah, Bendahara, Teller, dan Admin. Akun wali murid dikelola di menu Wali Murid.">
         <x-slot:actions>
             <label class="input input-sm w-56">
                 <x-icon name="magnifying-glass" class="size-4 opacity-60" />
@@ -178,6 +205,7 @@ new #[Title('Data Pengguna')] class extends Component {
                     <th>Username</th>
                     <th>Kontak</th>
                     <th>Role</th>
+                    <th>Jenjang</th>
                     <th>Status</th>
                     <th class="text-end">Aksi</th>
                 </tr>
@@ -189,6 +217,7 @@ new #[Title('Data Pengguna')] class extends Component {
                         <td>{{ $user->username }}</td>
                         <td class="text-sm">{{ $user->email ?? '-' }}<br><span class="text-base-content/60">{{ $user->phone }}</span></td>
                         <td><span class="badge badge-outline">{{ $user->role->label() }}</span></td>
+                        <td class="text-sm">{{ $user->role->canBeAssignedToLevel() ? ($user->level?->name ?? 'Semua') : '-' }}</td>
                         <td>
                             @if ($user->is_active)
                                 <span class="badge badge-success">Aktif</span>
@@ -215,7 +244,7 @@ new #[Title('Data Pengguna')] class extends Component {
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="py-8 text-center text-base-content/60">Tidak ada pengguna.</td>
+                        <td colspan="7" class="py-8 text-center text-base-content/60">Tidak ada pengguna.</td>
                     </tr>
                 @endforelse
             </tbody>
@@ -229,11 +258,22 @@ new #[Title('Data Pengguna')] class extends Component {
             <x-input wire:model="name" label="Nama lengkap" required />
             <div class="grid gap-4 sm:grid-cols-2">
                 <x-input wire:model="username" label="Username" autocomplete="off" required />
-                <x-select wire:model="role" label="Role" placeholder="Pilih role" required>
+                <x-select wire:model.live="role" label="Role" placeholder="Pilih role" required>
                     @foreach (\App\Enums\Role::staff() as $staffRole)
                         <option value="{{ $staffRole->value }}" wire:key="role-{{ $staffRole->value }}">{{ $staffRole->label() }}</option>
                     @endforeach
                 </x-select>
+                @if ($this->roleCanBeAssignedToLevel)
+                    <div class="sm:col-span-2">
+                        <x-select wire:model="level_id" label="Jenjang">
+                            <option value="">Semua jenjang</option>
+                            @foreach ($this->levels as $level)
+                                <option value="{{ $level->id }}" wire:key="level-{{ $level->id }}">{{ $level->name }}</option>
+                            @endforeach
+                        </x-select>
+                        <p class="label">Pilih satu jenjang agar akun ini hanya bisa mengelola jenjang tersebut.</p>
+                    </div>
+                @endif
                 <x-input wire:model="email" label="Email (opsional)" type="email" />
                 <x-input wire:model="phone" label="No. HP (opsional)" inputmode="tel" />
             </div>

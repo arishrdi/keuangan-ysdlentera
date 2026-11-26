@@ -3,6 +3,7 @@
 namespace Database\Factories;
 
 use App\Enums\Role;
+use App\Models\Level;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
@@ -76,6 +77,19 @@ class UserFactory extends Factory
     public function treasurer(): static
     {
         return $this->role(Role::Treasurer);
+    }
+
+    public function teller(): static
+    {
+        return $this->role(Role::Teller);
+    }
+
+    /**
+     * Lock a staff member to a single level.
+     */
+    public function forLevel(Level $level): static
+    {
+        return $this->state(fn (array $attributes) => ['level_id' => $level->id]);
     }
 
     public function guardian(): static

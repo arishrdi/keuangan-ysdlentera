@@ -26,8 +26,10 @@
                     </div>
 
                     <div class="navbar-end gap-2">
-                        @if (auth()->user()->isStaff())
+                        @if (auth()->user()->isStaff() && auth()->user()->level_id === null)
                             <x-level-switcher />
+                        @elseif (auth()->user()->isStaff())
+                            <span class="badge badge-outline badge-primary" data-test="assigned-level">Jenjang: <strong>{{ auth()->user()->level?->name }}</strong></span>
                         @endif
 
                         <livewire:notification-bell />

@@ -4,10 +4,13 @@ use App\Actions\Payments\SubmitPayment;
 use App\Enums\PaymentChannelType;
 use App\Models\Bill;
 use App\Models\PaymentChannel;
+use App\Models\PaymentDraft;
 use App\Models\Student;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\Title;
 use Livewire\Attributes\Url;
@@ -34,6 +37,11 @@ new #[Title('Tagihan Anak')] class extends Component {
     public string $notes = '';
 
     public ?UploadedFile $proof = null;
+
+    /**
+     * The draft being continued, if the payment form was opened from one.
+     */
+    public ?int $draftId = null;
 
     public function mount(): void
     {
@@ -95,6 +103,27 @@ new #[Title('Tagihan Anak')] class extends Component {
         return $this->channels->firstWhere('id', $this->channelId);
     }
 
+    /**
+     * Saved drafts for the selected child, cleaned of bills that were paid in the meantime.
+     *
+     * @return Collection<int, PaymentDraft>
+     */
+    #[Computed]
+    public function drafts(): Collection
+    {
+        if ($this->student === null) {
+            return new Collection;
+        }
+
+        return PaymentDraft::query()
+            ->whereBelongsTo(auth()->user())
+            ->whereBelongsTo($this->student)
+            ->latest('updated_at')
+            ->get()
+            ->filter(fn (PaymentDraft $draft) => $draft->syncWithBills())
+            ->values();
+    }
+
     #[Computed]
     public function allocationTotal(): int
     {
@@ -103,7 +132,7 @@ new #[Title('Tagihan Anak')] class extends Component {
 
     public function updatedStudentId(): void
     {
-        $this->reset('allocations', 'channelId');
+        $this->reset('allocations', 'channelId', 'draftId', 'notes');
     }
 
     public function toggleBill(int $billId): void
@@ -130,6 +159,86 @@ new #[Title('Tagihan Anak')] class extends Component {
         }
 
         $this->dispatch('open-modal', name: 'pay');
+    }
+
+    /**
+     * Keep the chosen bills, amounts and destination to pay later, without proof.
+     */
+    public function saveDraft(): void
+    {
+        abort_if($this->student === null, 404);
+
+        $this->validate([
+            'channelId' => ['nullable', 'integer', Rule::in($this->channels->modelKeys())],
+            'notes' => ['nullable', 'string', 'max:255'],
+        ], [], ['channelId' => 'tujuan pembayaran', 'notes' => 'catatan']);
+
+        $allocations = array_filter(array_map('intval', $this->allocations), fn (int $amount) => $amount > 0);
+
+        if ($allocations === []) {
+            throw ValidationException::withMessages(['allocations' => 'Pilih minimal satu tagihan.']);
+        }
+
+        foreach ($allocations as $billId => $amount) {
+            $bill = $this->bills->firstWhere('id', $billId);
+
+            if ($bill === null || $bill->payableAmount() <= 0) {
+                throw ValidationException::withMessages(['allocations.'.$billId => 'Tagihan ini sudah lunas atau sedang menunggu verifikasi.']);
+            }
+
+            if ($amount > $bill->payableAmount()) {
+                throw ValidationException::withMessages(['allocations.'.$billId => 'Nominal untuk '.$bill->description.' melebihi sisa tagihan.']);
+            }
+        }
+
+        $draft = $this->draftId !== null
+            ? PaymentDraft::query()->whereBelongsTo(auth()->user())->find($this->draftId)
+            : null;
+
+        $attributes = [
+            'payment_channel_id' => $this->channelId,
+            'allocations' => $allocations,
+            'notes' => $this->notes ?: null,
+        ];
+
+        if ($draft !== null) {
+            $draft->update($attributes);
+        } else {
+            PaymentDraft::query()->create([...$attributes, 'user_id' => auth()->id(), 'student_id' => $this->student->id]);
+        }
+
+        $this->reset('allocations', 'channelId', 'proof', 'notes', 'draftId');
+        $this->dispatch('close-modal', name: 'pay');
+        $this->dispatch('toast', variant: 'success', text: 'Draft pembayaran disimpan. Lanjutkan kapan saja untuk mengirim bukti.');
+        unset($this->drafts);
+    }
+
+    public function resumeDraft(int $draftId): void
+    {
+        $draft = $this->drafts->firstWhere('id', $draftId);
+
+        abort_if($draft === null, 404);
+
+        $this->resetValidation();
+        $this->draftId = $draft->id;
+        $this->allocations = $draft->allocations;
+        $this->channelId = $this->channels->firstWhere('id', $draft->payment_channel_id)?->id;
+        $this->notes = (string) $draft->notes;
+        $this->proof = null;
+
+        $this->dispatch('open-modal', name: 'pay');
+    }
+
+    public function deleteDraft(int $draftId): void
+    {
+        PaymentDraft::query()->whereBelongsTo(auth()->user())->whereKey($draftId)->delete();
+
+        if ($this->draftId === $draftId) {
+            $this->reset('allocations', 'channelId', 'notes', 'draftId');
+        }
+
+        $this->dispatch('toast', variant: 'success', text: 'Draft pembayaran dihapus.');
+        unset($this->drafts);
     }
 
     public function submit(SubmitPayment $submitPayment): void
@@ -162,15 +271,19 @@ new #[Title('Tagihan Anak')] class extends Component {
             notes: $this->notes ?: null,
         );
 
-        $this->reset('allocations', 'channelId', 'proof', 'notes');
+        if ($this->draftId !== null) {
+            PaymentDraft::query()->whereBelongsTo(auth()->user())->whereKey($this->draftId)->delete();
+        }
+
+        $this->reset('allocations', 'channelId', 'proof', 'notes', 'draftId');
         $this->dispatch('close-modal', name: 'pay');
         $this->dispatch('toast', variant: 'success', text: 'Bukti pembayaran terkirim. Bendahara akan memverifikasi dalam 1–2 hari kerja.', duration: 8000);
-        unset($this->bills);
+        unset($this->bills, $this->drafts);
     }
 }; ?>
 
 <div class="pb-28">
-    <x-guardian.band title="Tagihan" description="Pilih tagihan, transfer ke rekening atau QRIS sekolah, lalu unggah buktinya.">
+    <x-guardian.band title="Tagihan" description="Pilih tagihan, transfer ke rekening atau QRIS sekolah, lalu unggah buktinya. Bisa disimpan dulu sebagai draft.">
         @if ($this->children->count() > 1)
             <x-guardian.child-pills :children="$this->children" :active="$studentId" />
         @endif
@@ -192,6 +305,37 @@ new #[Title('Tagihan Anak')] class extends Component {
                 <p class="font-bold text-primary">{{ \Illuminate\Support\Number::rupiah($this->bills->sum(fn ($bill) => $bill->remainingAmount())) }}</p>
             </div>
         </div>
+
+        @if ($this->drafts->isNotEmpty())
+            <section class="panel p-4" aria-labelledby="draft-title">
+                <h2 id="draft-title" class="font-semibold">Draft pembayaran</h2>
+                <p class="text-sm text-base-content/65">Belum dikirim. Lanjutkan untuk mengunggah bukti transfer.</p>
+                <ul class="mt-3 space-y-2">
+                    @foreach ($this->drafts as $draft)
+                        <li wire:key="draft-{{ $draft->id }}" class="flex flex-wrap items-center justify-between gap-3 rounded-field bg-base-200 p-3">
+                            <div class="min-w-0">
+                                <p class="font-semibold">{{ \Illuminate\Support\Number::rupiah($draft->total()) }}</p>
+                                <p class="truncate text-xs text-base-content/65">
+                                    {{ $this->bills->whereIn('id', array_keys($draft->allocations))->pluck('description')->join(', ') }}
+                                </p>
+                                <p class="text-xs text-base-content/55">Disimpan {{ $draft->updated_at->translatedFormat('j M Y H:i') }}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <x-confirm-button
+                                    :action="'deleteDraft('.$draft->id.')'"
+                                    title="Hapus draft"
+                                    message="Hapus draft pembayaran ini?"
+                                    confirm-label="Hapus"
+                                    danger
+                                    class="btn btn-sm btn-ghost text-error"
+                                >Hapus</x-confirm-button>
+                                <button type="button" class="btn btn-sm btn-primary" wire:click="resumeDraft({{ $draft->id }})">Lanjutkan bayar</button>
+                            </div>
+                        </li>
+                    @endforeach
+                </ul>
+            </section>
+        @endif
 
         <div class="space-y-3">
             @forelse ($this->bills as $bill)
@@ -336,8 +480,9 @@ new #[Title('Tagihan Anak')] class extends Component {
                 <p class="text-sm text-error">{{ $messages[0] }}</p>
             @endforeach
 
-            <div class="modal-action">
+            <div class="modal-action flex-wrap">
                 <button type="button" class="btn" x-on:click="$el.closest('dialog').close()">Batal</button>
+                <button type="button" class="btn btn-outline btn-primary" wire:click="saveDraft" wire:loading.attr="disabled">Simpan draft</button>
                 <button type="submit" class="btn btn-primary" wire:loading.attr="disabled" @disabled($this->channels->isEmpty())>Kirim bukti pembayaran</button>
             </div>
         </form>

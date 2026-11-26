@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Enums\Role;
+use App\Models\Level;
 use App\Models\Student;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -52,11 +53,21 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::define('manage-budgets', fn (User $user): bool => $user->hasRole(Role::Treasurer));
 
-        Gate::define('manage-savings', fn (User $user): bool => $user->hasRole(Role::Treasurer));
+        Gate::define('manage-savings', fn (User $user): bool => $user->hasRole(Role::Foundation));
+
+        Gate::define('view-savings', fn (User $user): bool => $user->hasRole(Role::Principal, Role::Foundation));
+
+        Gate::define('view-expenses', fn (User $user): bool => $user->hasRole(Role::Foundation));
+
+        Gate::define('record-cash-payments', fn (User $user): bool => $user->hasRole(Role::Teller));
+
+        Gate::define('send-payment-reminders', fn (User $user): bool => $user->hasRole(Role::Admin));
 
         Gate::define('view-finance', fn (User $user): bool => $user->hasRole(Role::Treasurer, Role::Principal, Role::Foundation));
 
-        Gate::define('view-student-billing', fn (User $user, Student $student): bool => $user->hasRole(Role::Treasurer, Role::Principal, Role::Foundation)
+        Gate::define('access-level', fn (User $user, Level|int|null $level): bool => $user->canAccessLevel($level));
+
+        Gate::define('view-student-billing', fn (User $user, Student $student): bool => ($user->hasRole(Role::Treasurer, Role::Principal, Role::Foundation, Role::Teller) && $user->canAccessLevel($student->level_id))
             || ($user->hasRole(Role::Guardian) && $student->isGuardedBy($user)));
     }
 

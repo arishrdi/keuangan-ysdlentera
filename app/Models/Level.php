@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Session;
 
 /**
@@ -45,6 +46,12 @@ class Level extends Model
      */
     public static function active(): ?self
     {
+        $assigned = static::assignedToCurrentUser();
+
+        if ($assigned !== null) {
+            return $assigned;
+        }
+
         $selected = Session::get(self::SESSION_KEY);
 
         if (! is_int($selected)) {
@@ -59,7 +66,17 @@ class Level extends Model
      */
     public static function hasActiveSelection(): bool
     {
-        return Session::has(self::SESSION_KEY);
+        return Session::has(self::SESSION_KEY) || Auth::user()?->level_id !== null;
+    }
+
+    /**
+     * The level the signed-in staff member is locked to, if any.
+     */
+    public static function assignedToCurrentUser(): ?self
+    {
+        $levelId = Auth::user()?->level_id;
+
+        return $levelId === null ? null : static::query()->find($levelId);
     }
 
     /**

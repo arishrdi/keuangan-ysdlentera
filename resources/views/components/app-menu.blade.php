@@ -16,12 +16,13 @@
         [
             'title' => 'Keuangan',
             'items' => [
+                ['label' => 'Kasir', 'route' => 'teller.index', 'icon' => 'banknotes', 'active' => 'teller.*', 'roles' => [Role::Teller]],
                 ['label' => 'Tagihan', 'route' => 'billing.index', 'icon' => 'document-text', 'active' => 'billing.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Pembayaran', 'route' => 'payments.index', 'icon' => 'banknotes', 'active' => 'payments.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Pemasukan', 'route' => 'finance.incomes', 'icon' => 'arrow-down-tray', 'active' => 'finance.incomes', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
-                ['label' => 'Pengeluaran', 'route' => 'finance.expenses', 'icon' => 'arrow-up-tray', 'active' => 'finance.expenses', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
+                ['label' => 'Pengeluaran', 'route' => 'finance.expenses', 'icon' => 'arrow-up-tray', 'active' => 'finance.expenses', 'roles' => [Role::Foundation]],
                 ['label' => 'Kas', 'route' => 'finance.cash', 'icon' => 'wallet', 'active' => 'finance.cash', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
-                ['label' => 'Tabungan', 'route' => 'savings.index', 'icon' => 'banknotes', 'active' => 'savings.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
+                ['label' => 'Tabungan', 'route' => 'savings.index', 'icon' => 'banknotes', 'active' => 'savings.*', 'roles' => [Role::Principal, Role::Foundation]],
                 ['label' => 'Anggaran', 'route' => 'budgets.index', 'icon' => 'clipboard-document-check', 'active' => 'budgets.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Laporan', 'route' => 'reports.index', 'icon' => 'chart-pie', 'active' => 'reports.*', 'roles' => [Role::Treasurer, Role::Principal, Role::Foundation]],
                 ['label' => 'Tagihan', 'route' => 'guardian.bills', 'icon' => 'document-text', 'active' => 'guardian.bills', 'roles' => [Role::Guardian]],
@@ -44,6 +45,7 @@
         [
             'title' => 'Pengaturan Keuangan',
             'items' => [
+                ['label' => 'Pengingat Tagihan', 'route' => 'admin.payment-reminders', 'icon' => 'bell', 'active' => 'admin.payment-reminders', 'roles' => [Role::Admin]],
                 ['label' => 'Kategori & Tarif', 'route' => 'admin.fee-rates', 'icon' => 'tag', 'active' => 'admin.fee-rates', 'roles' => [Role::Admin]],
                 ['label' => 'Katalog Seragam', 'route' => 'admin.uniform-items', 'icon' => 'shopping-bag', 'active' => 'admin.uniform-items', 'roles' => [Role::Admin]],
                 ['label' => 'Akun Kas', 'route' => 'admin.cash-accounts', 'icon' => 'wallet', 'active' => 'admin.cash-accounts', 'roles' => [Role::Admin]],

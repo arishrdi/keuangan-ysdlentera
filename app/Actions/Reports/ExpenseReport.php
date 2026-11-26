@@ -3,6 +3,7 @@
 namespace App\Actions\Reports;
 
 use App\Enums\CashTransactionType;
+use App\Enums\Role;
 use App\Enums\TransactionCategoryType;
 use App\Models\CashTransaction;
 use App\Models\TransactionCategory;
@@ -12,6 +13,14 @@ use App\Models\TransactionCategory;
  */
 class ExpenseReport extends Report
 {
+    /**
+     * @return array<int, Role>
+     */
+    public static function roles(): array
+    {
+        return [Role::Foundation];
+    }
+
     public static function key(): string
     {
         return 'pengeluaran';

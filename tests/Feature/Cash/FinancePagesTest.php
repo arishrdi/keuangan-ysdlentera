@@ -13,7 +13,15 @@ it('opens the finance pages for finance staff only', function (string $route) {
     $this->actingAs(User::factory()->principal()->create())->withSession([Level::SESSION_KEY => Level::ALL])->get(route($route))->assertOk();
     $this->actingAs(User::factory()->admin()->create())->get(route($route))->assertForbidden();
     $this->actingAs(User::factory()->guardian()->create())->get(route($route))->assertForbidden();
-})->with(['finance.incomes', 'finance.expenses', 'finance.cash']);
+})->with(['finance.incomes', 'finance.cash']);
+
+it('opens the expense page for the foundation only', function () {
+    $this->actingAs(User::factory()->foundation()->create())->withSession([Level::SESSION_KEY => Level::ALL])->get(route('finance.expenses'))->assertOk();
+
+    foreach (['treasurer', 'principal', 'admin'] as $state) {
+        $this->actingAs(User::factory()->{$state}()->create())->withSession([Level::SESSION_KEY => Level::ALL])->get(route('finance.expenses'))->assertForbidden();
+    }
+});
 
 it('records an expense from the expense page', function () {
     $level = Level::factory()->sd()->create();

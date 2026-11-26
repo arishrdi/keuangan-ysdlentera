@@ -14,5 +14,6 @@ it('seeds the staff accounts but no demo data outside local', function () {
         'yayasan' => Role::Foundation,
         'kepsek' => Role::Principal,
         'bendahara' => Role::Treasurer,
+        'teller' => Role::Teller,
     ])->and(Student::query()->exists())->toBeFalse();
 });

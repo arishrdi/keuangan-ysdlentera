@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -25,6 +26,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property Role $role
+ * @property int|null $level_id
  * @property bool $is_active
  * @property string|null $two_factor_secret
  * @property string|null $two_factor_recovery_codes
@@ -33,7 +35,7 @@ use Laravel\Fortify\TwoFactorAuthenticatable;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  */
-#[Fillable(['name', 'username', 'email', 'phone', 'address', 'password', 'role', 'is_active'])]
+#[Fillable(['name', 'username', 'email', 'phone', 'address', 'password', 'role', 'level_id', 'is_active'])]
 #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -66,6 +68,42 @@ class User extends Authenticatable
         return $this->belongsToMany(Student::class, 'guardian_student')
             ->withPivot('relationship')
             ->withTimestamps();
+    }
+
+    /**
+     * The level this staff member is locked to; null means every level.
+     *
+     * @return BelongsTo<Level, $this>
+     */
+    public function level(): BelongsTo
+    {
+        return $this->belongsTo(Level::class);
+    }
+
+    /**
+     * Whether this user may work with data of the given level.
+     */
+    public function canAccessLevel(Level|int|null $level): bool
+    {
+        if ($this->level_id === null) {
+            return true;
+        }
+
+        $levelId = $level instanceof Level ? $level->id : $level;
+
+        return $levelId === $this->level_id;
+    }
+
+    /**
+     * Users allowed to work with the given level: those locked to it and those covering every level.
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeWithAccessToLevel(Builder $query, Level|int $level): void
+    {
+        $levelId = $level instanceof Level ? $level->id : $level;
+
+        $query->where(fn (Builder $query) => $query->whereNull('level_id')->orWhere('level_id', $levelId));
     }
 
     public function hasRole(Role ...$roles): bool

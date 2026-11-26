@@ -9,10 +9,13 @@ use App\Models\Student;
 use App\Models\User;
 use Livewire\Livewire;
 
-it('opens the savings pages for finance staff only', function () {
+it('opens the savings pages for the principal and foundation only', function () {
     $student = Student::factory()->create();
 
-    foreach (['treasurer', 'principal', 'foundation'] as $state) {
+    $treasurer = User::factory()->treasurer()->create();
+    $this->actingAs($treasurer)->withSession([Level::SESSION_KEY => Level::ALL])->get(route('savings.index'))->assertForbidden();
+
+    foreach (['principal', 'foundation'] as $state) {
         $user = User::factory()->{$state}()->create();
         $this->actingAs($user)->withSession([Level::SESSION_KEY => Level::ALL])->get(route('savings.index'))->assertOk();
         $this->actingAs($user)->withSession([Level::SESSION_KEY => Level::ALL])->get(route('savings.student', $student))->assertOk();
@@ -24,7 +27,7 @@ it('opens the savings pages for finance staff only', function () {
 
 it('records a deposit from the savings list', function () {
     $student = Student::factory()->create();
-    $this->actingAs(User::factory()->treasurer()->create());
+    $this->actingAs(User::factory()->foundation()->create());
 
     Livewire::test('pages::savings.index')
         ->call('open', $student->id, 'setoran')
@@ -37,7 +40,7 @@ it('records a deposit from the savings list', function () {
 
 it('shows the balance error on the amount field', function () {
     $student = Student::factory()->create();
-    $this->actingAs(User::factory()->treasurer()->create());
+    $this->actingAs(User::factory()->foundation()->create());
 
     Livewire::test('pages::savings.student', ['student' => $student])
         ->call('open', 'penarikan')
@@ -56,7 +59,7 @@ it('forbids the principal from recording savings', function () {
 it('prefills the full balance when withdrawing for a former student', function () {
     $student = Student::factory()->withStatus(StudentStatus::Transferred)->create();
     SavingsTransaction::factory()->for($student)->create(['amount' => 80_000]);
-    $this->actingAs(User::factory()->treasurer()->create());
+    $this->actingAs(User::factory()->foundation()->create());
 
     Livewire::test('pages::savings.student', ['student' => $student])
         ->call('open', 'penarikan')
@@ -71,7 +74,7 @@ it('shows a running balance and cancels an entry from the student page', functio
     $student = Student::factory()->create();
     $first = SavingsTransaction::factory()->for($student)->create(['amount' => 30_000, 'transacted_on' => '2026-11-01']);
     SavingsTransaction::factory()->for($student)->create(['amount' => 20_000, 'transacted_on' => '2026-11-02']);
-    $this->actingAs(User::factory()->treasurer()->create());
+    $this->actingAs(User::factory()->foundation()->create());
 
     $component = Livewire::test('pages::savings.student', ['student' => $student]);
 

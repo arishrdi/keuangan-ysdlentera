@@ -16,6 +16,7 @@ class BudgetAttachmentController extends Controller
     public function __invoke(BudgetProposal $budgetProposal, BudgetAttachment $attachment): StreamedResponse
     {
         Gate::authorize('view-finance');
+        Gate::authorize('access-level', $budgetProposal->level_id);
 
         abort_unless($attachment->budget_proposal_id === $budgetProposal->id, 404);
         abort_unless(Storage::disk('local')->exists($attachment->path), 404);

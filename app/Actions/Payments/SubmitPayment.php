@@ -25,7 +25,8 @@ use Illuminate\Validation\ValidationException;
  * Record a payment for one or more bills of a student.
  *
  * Guardians submit transfers or QRIS payments with proof, which wait for the treasurer's verification.
- * Payments recorded by the treasurer (cash at the counter or a confirmed transfer) are verified immediately.
+ * Payments recorded by the treasurer (cash at the counter or a confirmed transfer) or by a teller
+ * (cash at the counter only) are verified immediately.
  */
 class SubmitPayment
 {
@@ -44,9 +45,9 @@ class SubmitPayment
         ?UploadedFile $proof = null,
         ?string $notes = null,
     ): Payment {
-        $isTreasurer = $actor->hasRole(Role::Treasurer);
+        $isStaffRecorder = $actor->hasRole(Role::Treasurer, Role::Teller);
 
-        $this->ensureMethodIsAllowed($actor, $student, $method, $channel, $proof, $isTreasurer);
+        $this->ensureMethodIsAllowed($actor, $student, $method, $channel, $proof, $isStaffRecorder);
 
         $payment = DB::transaction(function () use ($actor, $student, $allocations, $method, $paidOn, $channel, $proof, $notes): Payment {
             $allocations = array_filter($allocations, fn (int $amount) => $amount > 0);
@@ -93,26 +94,34 @@ class SubmitPayment
             return $payment;
         });
 
-        if ($isTreasurer) {
+        if ($isStaffRecorder) {
             return $this->verifyPayment->handle($payment, $actor);
         }
 
         Notification::send(
-            User::query()->where('role', Role::Treasurer)->where('is_active', true)->get(),
+            User::query()->where('role', Role::Treasurer)->where('is_active', true)->withAccessToLevel($payment->level_id)->get(),
             new PaymentSubmitted($payment),
         );
 
         return $payment;
     }
 
-    private function ensureMethodIsAllowed(User $actor, Student $student, PaymentMethod $method, ?PaymentChannel $channel, ?UploadedFile $proof, bool $isTreasurer): void
+    private function ensureMethodIsAllowed(User $actor, Student $student, PaymentMethod $method, ?PaymentChannel $channel, ?UploadedFile $proof, bool $isStaffRecorder): void
     {
-        if (! $isTreasurer && ! ($actor->hasRole(Role::Guardian) && $student->isGuardedBy($actor))) {
+        $mayPay = $isStaffRecorder
+            ? $actor->canAccessLevel($student->level_id)
+            : $actor->hasRole(Role::Guardian) && $student->isGuardedBy($actor);
+
+        if (! $mayPay) {
             throw ValidationException::withMessages(['student' => 'Anda tidak berhak membayar tagihan siswa ini.']);
         }
 
+        if ($actor->hasRole(Role::Teller) && $method !== PaymentMethod::Cash) {
+            throw ValidationException::withMessages(['method' => 'Teller hanya mencatat pembayaran tunai.']);
+        }
+
         if ($method === PaymentMethod::Cash) {
-            if (! $isTreasurer) {
+            if (! $isStaffRecorder) {
                 throw ValidationException::withMessages(['method' => 'Pembayaran tunai dicatat oleh bendahara di sekolah.']);
             }
 
@@ -123,7 +132,7 @@ class SubmitPayment
             throw ValidationException::withMessages(['channel' => 'Pilih rekening atau QRIS tujuan yang sesuai jenjang siswa.']);
         }
 
-        if (! $isTreasurer && $proof === null) {
+        if (! $isStaffRecorder && $proof === null) {
             throw ValidationException::withMessages(['proof' => 'Unggah bukti pembayaran.']);
         }
     }

@@ -14,6 +14,8 @@ class ActiveLevelController extends Controller
      */
     public function __invoke(Request $request): RedirectResponse
     {
+        abort_if($request->user()->level_id !== null, 403, 'Akun Anda terkunci pada satu jenjang.');
+
         $validated = $request->validate([
             'level' => ['required', Rule::anyOf([
                 [Rule::in([Level::ALL])],

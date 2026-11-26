@@ -3,6 +3,7 @@
 namespace App\Actions\Reports;
 
 use App\Enums\CashDirection;
+use App\Enums\Role;
 use App\Enums\StudentStatus;
 use App\Models\Level;
 use App\Models\SavingsTransaction;
@@ -13,6 +14,14 @@ use App\Models\Student;
  */
 class SavingsReport extends Report
 {
+    /**
+     * @return array<int, Role>
+     */
+    public static function roles(): array
+    {
+        return [Role::Principal, Role::Foundation];
+    }
+
     public static function key(): string
     {
         return 'tabungan';

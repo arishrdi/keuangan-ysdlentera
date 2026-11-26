@@ -28,6 +28,8 @@ new class extends Component {
 
     public function mount(Student $student): void
     {
+        $this->authorize('access-level', $student->level_id);
+
         $this->student = $student->load('level', 'currentEnrollment.classroom', 'guardians');
     }
 

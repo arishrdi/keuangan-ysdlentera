@@ -46,6 +46,7 @@ new class extends Component {
         $this->authorize('manage-budgets');
 
         if ($budgetProposal?->exists) {
+            $this->authorize('access-level', $budgetProposal->level_id);
             abort_unless($budgetProposal->status->isEditable(), 403);
 
             $this->proposalId = $budgetProposal->id;

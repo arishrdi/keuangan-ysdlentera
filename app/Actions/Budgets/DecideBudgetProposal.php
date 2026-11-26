@@ -27,7 +27,7 @@ class DecideBudgetProposal
 
         $awaitingRole = $proposal->status->awaitingRole();
 
-        if ($awaitingRole === null || ! $actor->hasRole($awaitingRole)) {
+        if ($awaitingRole === null || ! $actor->hasRole($awaitingRole) || ! $actor->canAccessLevel($proposal->level_id)) {
             throw ValidationException::withMessages(['decision' => 'Pengajuan ini tidak sedang menunggu keputusan Anda.']);
         }
 
@@ -78,7 +78,7 @@ class DecideBudgetProposal
         }
 
         Notification::send(
-            User::query()->where('role', Role::Treasurer)->where('is_active', true)->get(),
+            User::query()->where('role', Role::Treasurer)->where('is_active', true)->withAccessToLevel($proposal->level_id)->get(),
             new BudgetProposalUpdated($proposal, 'Status anggaran: '.$status->label(), $summary.' oleh '.$actor->name.'.'),
         );
     }

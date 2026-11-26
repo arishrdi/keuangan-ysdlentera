@@ -55,7 +55,7 @@ new #[Title('Tabungan Anak')] class extends Component {
 }; ?>
 
 <div>
-    <x-guardian.band title="Tabungan" description="Setoran dan penarikan dilakukan di bendahara sekolah.">
+    <x-guardian.band title="Tabungan" description="Setoran dan penarikan dicatat oleh petugas yayasan.">
         @if ($this->children->count() > 1)
             <x-guardian.child-pills :children="$this->children" :active="$studentId" />
         @endif

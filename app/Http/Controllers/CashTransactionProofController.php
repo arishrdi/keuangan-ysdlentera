@@ -15,6 +15,7 @@ class CashTransactionProofController extends Controller
     public function __invoke(CashTransaction $cashTransaction): StreamedResponse
     {
         Gate::authorize('view-finance');
+        Gate::authorize('access-level', $cashTransaction->level_id);
 
         abort_if($cashTransaction->proof_path === null || ! Storage::disk('local')->exists($cashTransaction->proof_path), 404);
 

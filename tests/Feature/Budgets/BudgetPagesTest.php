@@ -170,3 +170,42 @@ it('downloads attachments only for finance staff', function () {
         ->get(route('budgets.attachment', [$proposal, $attachment]))
         ->assertForbidden();
 });
+
+it('records and cancels an expense from the budget detail page', function () {
+    $level = Level::factory()->sd()->create();
+    $account = CashAccount::factory()->for($level)->create();
+    CashTransaction::factory()->for($account)->create(['amount' => 10_000_000]);
+    $budget = BudgetProposal::factory()->for($level)->status(BudgetStatus::Approved)->withTotal(3_000_000)->create();
+    $category = TransactionCategory::factory()->expense()->create();
+    $this->actingAs(User::factory()->treasurer()->forLevel($level)->create());
+
+    $component = Livewire::test('pages::budgets.show', ['budgetProposal' => $budget])
+        ->call('openExpense')
+        ->assertSet('expenseAccountId', $account->id)
+        ->set('expenseCategoryId', $category->id)
+        ->set('expenseAmount', 3_500_000)
+        ->call('recordExpense')
+        ->assertHasErrors('expenseAmount')
+        ->set('expenseAmount', 1_000_000)
+        ->call('recordExpense')
+        ->assertHasNoErrors();
+
+    $expense = $budget->expenses()->sole();
+
+    expect($budget->refresh()->remainingAmount())->toBe(2_000_000)
+        ->and($expense->level_id)->toBe($level->id);
+
+    $component->call('confirmCancelExpense', $expense->id)
+        ->set('expenseCancellationReason', 'Salah input')
+        ->call('cancelExpense')
+        ->assertHasNoErrors();
+
+    expect($budget->refresh()->remainingAmount())->toBe(3_000_000);
+});
+
+it('does not let the principal record budget expenses', function () {
+    $budget = BudgetProposal::factory()->status(BudgetStatus::Approved)->withTotal(1_000_000)->create();
+    $this->actingAs(User::factory()->principal()->create());
+
+    Livewire::test('pages::budgets.show', ['budgetProposal' => $budget])->call('openExpense')->assertForbidden();
+});

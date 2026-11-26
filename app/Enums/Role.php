@@ -8,6 +8,7 @@ enum Role: string
     case Principal = 'kepala_sekolah';
     case Treasurer = 'bendahara';
     case Admin = 'admin';
+    case Teller = 'teller';
     case Guardian = 'wali_murid';
 
     public function label(): string
@@ -17,6 +18,7 @@ enum Role: string
             self::Principal => 'Kepala Sekolah',
             self::Treasurer => 'Bendahara',
             self::Admin => 'Admin',
+            self::Teller => 'Teller',
             self::Guardian => 'Wali Murid',
         };
     }
@@ -34,7 +36,15 @@ enum Role: string
      */
     public function mustSelectLevelAfterLogin(): bool
     {
-        return in_array($this, [self::Principal, self::Treasurer], true);
+        return in_array($this, [self::Principal, self::Treasurer, self::Teller], true);
+    }
+
+    /**
+     * Whether the role can be locked to a single level (jenjang).
+     */
+    public function canBeAssignedToLevel(): bool
+    {
+        return in_array($this, [self::Principal, self::Treasurer, self::Teller], true);
     }
 
     /**

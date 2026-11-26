@@ -36,6 +36,7 @@ class DatabaseSeeder extends Seeder
             ['yayasan', 'Ketua Yayasan', Role::Foundation],
             ['kepsek', 'Kepala Sekolah', Role::Principal],
             ['bendahara', 'Bendahara', Role::Treasurer],
+            ['teller', 'Teller', Role::Teller],
         ] as [$username, $name, $role]) {
             User::query()->firstOrCreate(['username' => $username], [
                 'name' => $name,

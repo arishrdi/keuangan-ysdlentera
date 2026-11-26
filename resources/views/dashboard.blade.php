@@ -5,6 +5,7 @@
     use App\Models\Level;
     use App\Models\Student;
     use App\Models\User;
+    use Illuminate\Support\Facades\Gate;
 
     $user = auth()->user();
     $activeLevel = $user->isStaff() ? Level::active() : null;
@@ -12,9 +13,27 @@
 @endphp
 
 <x-layouts::app title="Dashboard">
-    @if ($user->isStaff())
+    @if ($user->hasRole(Role::Teller))
+        <section class="relative mb-4 overflow-hidden rounded-box bg-neutral p-6 text-neutral-content lg:p-8" aria-labelledby="dash-greeting">
+            <x-app-logo-icon class="pointer-events-none absolute -end-16 -top-24 size-72 text-accent opacity-10" aria-hidden="true" />
+            <div class="relative flex flex-wrap items-end justify-between gap-6">
+                <div class="min-w-0 max-w-3xl">
+                    <h1 id="dash-greeting" class="text-2xl font-bold tracking-tight lg:text-3xl">Assalamu'alaikum, {{ $user->name }}</h1>
+                    <p class="mt-2 text-neutral-content/80">Cari siswa, pilih tagihannya, lalu catat pembayaran tunai yang diterima di loket.</p>
+                    <ul class="mt-4 flex flex-wrap gap-1.5" aria-label="Konteks">
+                        @foreach ([now()->translatedFormat('l, j F Y'), $user->role->label(), 'Jenjang '.($activeLevel?->name ?? 'Semua')] as $chip)
+                            <li class="rounded-full bg-neutral-content/12 px-2.5 py-0.5 text-xs font-medium text-neutral-content/85">{{ $chip }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+                <a href="{{ route('teller.index') }}" class="btn border-0 bg-base-100 text-primary hover:bg-base-200" wire:navigate>Buka kasir</a>
+            </div>
+        </section>
+    @elseif ($user->isStaff())
         @php
             $isAdmin = $user->hasRole(Role::Admin);
+            $canViewExpenses = Gate::allows('view-expenses');
+            $canViewSavings = Gate::allows('view-savings');
             $dashboard = new \App\Actions\Reports\StaffDashboard($user, $activeLevel, $academicYear);
             $availableMonths = $dashboard->availableMonths();
             $requestedMonth = \App\Actions\Reports\StaffDashboard::parseMonth(request()->query('bulan'));
@@ -107,7 +126,7 @@
             </section>
         @else
             {{-- Headline figures. --}}
-            <section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Angka utama">
+            <section @class(['grid gap-4 sm:grid-cols-2', 'xl:grid-cols-5' => $canViewExpenses, 'xl:grid-cols-4' => ! $canViewExpenses]) aria-label="Angka utama">
                 <div class="panel p-5">
                     <p class="kpi-label">Saldo kas</p>
                     <p class="kpi-value mt-1 text-primary" title="{{ $rupiah($cashBalance) }}">{{ $short($cashBalance) }}</p>
@@ -118,11 +137,13 @@
                     <p class="kpi-value mt-1" title="{{ $rupiah($monthIncome) }}">{{ $short($monthIncome) }}</p>
                     <p class="kpi-note mt-1">{{ $monthNote }}</p>
                 </div>
-                <div class="panel p-5">
-                    <p class="kpi-label">Pengeluaran {{ $monthName }}</p>
-                    <p class="kpi-value mt-1" title="{{ $rupiah($monthExpense) }}">{{ $short($monthExpense) }}</p>
-                    <p class="kpi-note mt-1">{{ $monthNote }}</p>
-                </div>
+                @if ($canViewExpenses)
+                    <div class="panel p-5">
+                        <p class="kpi-label">Pengeluaran {{ $monthName }}</p>
+                        <p class="kpi-value mt-1" title="{{ $rupiah($monthExpense) }}">{{ $short($monthExpense) }}</p>
+                        <p class="kpi-note mt-1">{{ $monthNote }}</p>
+                    </div>
+                @endif
                 <div class="panel p-5">
                     <p class="kpi-label">Tunggakan</p>
                     <p @class(['kpi-value mt-1', 'text-error' => $bills['outstanding'] > 0]) title="{{ $rupiah($bills['outstanding']) }}">{{ $short($bills['outstanding']) }}</p>
@@ -147,18 +168,20 @@
                 {{-- Income against expense per month: two series, one axis. --}}
                 @php
                     $flow = $dashboard->monthlyFlow();
-                    $flowMax = max(1, collect($flow)->flatMap(fn ($month) => [$month['income'], $month['expense']])->max());
+                    $flowMax = max(1, collect($flow)->flatMap(fn ($month) => $canViewExpenses ? [$month['income'], $month['expense']] : [$month['income']])->max());
                     $flowScale = (int) (ceil($flowMax / (10 ** max(0, strlen((string) $flowMax) - 1))) * (10 ** max(0, strlen((string) $flowMax) - 1)));
                 @endphp
-                <section class="panel p-5 xl:col-span-8" aria-labelledby="dash-flow">
+                <section @class(['panel p-5', 'xl:col-span-8' => $canViewExpenses, 'xl:col-span-12' => ! $canViewExpenses]) aria-labelledby="dash-flow">
                     <div class="flex flex-wrap items-baseline justify-between gap-3">
                         <div>
-                            <h2 id="dash-flow" class="font-semibold">Pemasukan dan pengeluaran per bulan</h2>
+                            <h2 id="dash-flow" class="font-semibold">{{ $canViewExpenses ? 'Pemasukan dan pengeluaran per bulan' : 'Pemasukan per bulan' }}</h2>
                             <p class="text-xs text-base-content/60">Klik kolom bulan untuk melihat rinciannya.</p>
                         </div>
                         <ul class="flex gap-4 text-xs text-base-content/70" aria-label="Keterangan">
                             <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-(--chart-in)"></span>Pemasukan</li>
-                            <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-(--chart-out)"></span>Pengeluaran</li>
+                            @if ($canViewExpenses)
+                                <li class="flex items-center gap-1.5"><span class="size-2.5 rounded-sm bg-(--chart-out)"></span>Pengeluaran</li>
+                            @endif
                         </ul>
                     </div>
 
@@ -192,13 +215,15 @@
                                                 @endif
                                             </div>
                                         </div>
-                                        <div class="tooltip flex h-full w-full max-w-7 items-end" data-tip="Pengeluaran {{ $month['month']->translatedFormat('F') }}: {{ $rupiah($month['expense']) }}">
-                                            <div class="relative w-full rounded-t bg-(--chart-out)" style="height: {{ $expenseHeight }}%">
-                                                @if ($isCurrent && $month['expense'] > 0)
-                                                    <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[0.6875rem] font-semibold whitespace-nowrap">{{ str_replace('Rp ', '', $short($month['expense'])) }}</span>
-                                                @endif
+                                        @if ($canViewExpenses)
+                                            <div class="tooltip flex h-full w-full max-w-7 items-end" data-tip="Pengeluaran {{ $month['month']->translatedFormat('F') }}: {{ $rupiah($month['expense']) }}">
+                                                <div class="relative w-full rounded-t bg-(--chart-out)" style="height: {{ $expenseHeight }}%">
+                                                    @if ($isCurrent && $month['expense'] > 0)
+                                                        <span class="absolute -top-5 left-1/2 -translate-x-1/2 text-[0.6875rem] font-semibold whitespace-nowrap">{{ str_replace('Rp ', '', $short($month['expense'])) }}</span>
+                                                    @endif
+                                                </div>
                                             </div>
-                                        </div>
+                                        @endif
                                     </div>
                                     <span @class(['h-7 pt-1.5 text-center text-xs', 'font-semibold text-primary' => $isCurrent, 'text-base-content/60' => ! $isCurrent])>{{ $month['month']->translatedFormat('M') }}</span>
                                 </a>
@@ -207,17 +232,18 @@
                     </div>
 
                     <table class="sr-only">
-                        <caption>Pemasukan dan pengeluaran per bulan</caption>
-                        <thead><tr><th>Bulan</th><th>Pemasukan</th><th>Pengeluaran</th></tr></thead>
+                        <caption>{{ $canViewExpenses ? 'Pemasukan dan pengeluaran per bulan' : 'Pemasukan per bulan' }}</caption>
+                        <thead><tr><th>Bulan</th><th>Pemasukan</th>@if ($canViewExpenses)<th>Pengeluaran</th>@endif</tr></thead>
                         <tbody>
                             @foreach ($flow as $month)
-                                <tr><td>{{ $month['month']->translatedFormat('F Y') }}</td><td>{{ $rupiah($month['income']) }}</td><td>{{ $rupiah($month['expense']) }}</td></tr>
+                                <tr><td>{{ $month['month']->translatedFormat('F Y') }}</td><td>{{ $rupiah($month['income']) }}</td>@if ($canViewExpenses)<td>{{ $rupiah($month['expense']) }}</td>@endif</tr>
                             @endforeach
                         </tbody>
                     </table>
                 </section>
 
                 {{-- Where this month's money went: one hue, largest first. --}}
+                @if ($canViewExpenses)
                 @php $composition = $dashboard->expenseByCategory(); @endphp
                 <section class="panel p-5 xl:col-span-4" aria-labelledby="dash-composition">
                     <div class="flex items-baseline justify-between gap-3">
@@ -244,6 +270,7 @@
                         </ul>
                     @endif
                 </section>
+                @endif
 
                 {{-- Billing progress per classroom. --}}
                 @php $classrooms = $dashboard->billsByClassroom(); @endphp
@@ -353,11 +380,13 @@
                                 <dt class="kpi-label">Kelas</dt>
                                 <dd class="mt-0.5 text-lg font-bold">{{ number_format($dashboard->classroomCount(), 0, ',', '.') }}</dd>
                             </div>
-                            <div>
-                                <dt class="kpi-label">Tabungan siswa</dt>
-                                <dd class="mt-0.5 text-lg font-bold" title="{{ $rupiah($dashboard->savingsBalance()) }}">{{ $short($dashboard->savingsBalance()) }}</dd>
-                                <dd class="kpi-note">Dana titipan, di luar kas</dd>
-                            </div>
+                            @if ($canViewSavings)
+                                <div>
+                                    <dt class="kpi-label">Tabungan siswa</dt>
+                                    <dd class="mt-0.5 text-lg font-bold" title="{{ $rupiah($dashboard->savingsBalance()) }}">{{ $short($dashboard->savingsBalance()) }}</dd>
+                                    <dd class="kpi-note">Dana titipan, di luar kas</dd>
+                                </div>
+                            @endif
                             <div>
                                 <dt class="kpi-label">Anggaran terpakai</dt>
                                 <dd class="mt-0.5 text-lg font-bold">{{ $budgets['percent'] }}%</dd>
@@ -368,7 +397,7 @@
                 </div>
             </div>
 
-            @if ($activeLevel === null && $user->hasRole(Role::Foundation, Role::Principal))
+            @if ($activeLevel === null && $user->hasRole(Role::Foundation))
                 @php
                     $consolidatedFilters = \App\Actions\Reports\ReportFilters::fromArray([], null);
                     $consolidated = app(\App\Actions\Reports\ConsolidatedReport::class)->build($consolidatedFilters);

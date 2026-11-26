@@ -87,7 +87,7 @@ new #[Title('Pembayaran')] class extends Component {
     public function selected(): ?Payment
     {
         return $this->selectedId
-            ? Payment::query()->with(['student', 'level', 'channel', 'submitter', 'verifier', 'canceller', 'allocations.bill.paymentCategory'])->find($this->selectedId)
+            ? Payment::query()->with(['student', 'level', 'channel', 'submitter', 'verifier', 'canceller', 'allocations.bill.paymentCategory'])->when($this->activeLevel, fn ($query, Level $level) => $query->whereBelongsTo($level))->find($this->selectedId)
             : null;
     }
 
